@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Data & models (large, not for git) — tracked dataset samples can be added explicitly
+data/raw/
+data/distorted/
+data/restored/
+data/processed/
+*.pt
+*.pth
+*.onnx
+*.h5
+*.ckpt
+runs/
+
+# Logs
+*.log
+wandb/
+
+# Env
+.env
