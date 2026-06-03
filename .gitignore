@@ -37,3 +37,6 @@ wandb/
 
 # Env
 .env
+
+# Course brief (kept locally, not tracked)
+3002_CousreProject.pdf

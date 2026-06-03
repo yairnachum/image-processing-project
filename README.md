@@ -2,8 +2,6 @@
 
 Evaluating the **robustness** of image processing and vision algorithms under image distortions, and the effect of two recovery strategies: classical image enhancement (pre-processing) and model fine-tuning.
 
-> Course brief: `3002_CousreProject.pdf`
-
 ## Team
 
 _To be filled in (names + emails)._
@@ -58,13 +56,12 @@ To be added per stage:
 
 ```
 .
-├── 3002_CousreProject.pdf   # course brief
-├── README.md                # this file = the project report
-├── data/                    # (gitignored) raw / distorted / restored
-├── notebooks/               # EDA + experiments
-├── src/                     # reusable code (distortions, restoration, eval)
-├── outputs/                 # tables, figures, sample grids
-└── runs/                    # (gitignored) model checkpoints / training runs
+├── README.md     # this file = the project report
+├── data/         # (gitignored) raw / distorted / restored
+├── notebooks/    # EDA + experiments
+├── src/          # reusable code (distortions, restoration, eval)
+├── outputs/      # tables, figures, sample grids
+└── runs/         # (gitignored) model checkpoints / training runs
 ```
 
 ## Weekly plan (from the course PDF)
