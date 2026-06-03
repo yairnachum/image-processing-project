@@ -40,3 +40,6 @@ wandb/
 
 # Course brief (kept locally, not tracked)
 3002_CousreProject.pdf
+
+# Design / spec docs (kept locally, not tracked)
+docs/
