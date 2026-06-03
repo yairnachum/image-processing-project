@@ -60,6 +60,29 @@ All performance reported **per class** and **per SNR**.
 3. **Small subset:** 200 images / 40 test tiles → per-class statistics for rare classes (helicopter, ground track field) are noisy. Reported with confidence intervals.
 4. **Single tile per source image:** ignores most of each source image; chosen to keep compute and storage modest.
 
+## Week 4 — Data & EDA
+
+### Subset selection
+
+200 tiles (1024×1024) drawn from DOTA v1.0 train + val splits, frozen with `random.seed(7)`:
+- **Train:** 160 tiles
+- **Test:** 40 tiles
+
+Code: [`scripts/download_dota.py`](scripts/download_dota.py) · [`src/dota_utils.py`](src/dota_utils.py) · [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb)
+
+### Sample annotated tiles (4×4 grid)
+
+<!-- Run notebooks/01_eda.ipynb to generate this image -->
+![Sample grid with OBB annotations](outputs/sample_grid.png)
+
+### Class distribution
+
+![Class distribution](outputs/class_distribution.png)
+
+### Annotations-per-tile distribution
+
+![Annotations per tile](outputs/ann_per_tile.png)
+
 ## Results
 
 To be added per stage:
