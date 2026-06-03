@@ -1,4 +1,4 @@
-# Image Processing / Vision Course Project (3002)
+# Image Processing / Vision Course Project
 
 Evaluating the **robustness** of image processing and vision algorithms under image distortions, and the effect of two recovery strategies: classical image enhancement (pre-processing) and model fine-tuning.
 
@@ -6,7 +6,7 @@ Evaluating the **robustness** of image processing and vision algorithms under im
 
 _To be filled in (names + emails)._
 
-## Project structure (per course brief)
+## Project structure
 
 For each chosen task on the chosen dataset, we will produce four measurements:
 
@@ -64,7 +64,7 @@ To be added per stage:
 └── runs/         # (gitignored) model checkpoints / training runs
 ```
 
-## Weekly plan (from the course PDF)
+## Weekly plan 
 
 | Wk | Task | Artifact |
 |----|------|----------|
