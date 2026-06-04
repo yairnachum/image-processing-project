@@ -18,6 +18,7 @@ ultralytics>=8.0       # YOLOv8
 torch>=2.0
 torchvision>=0.15
 huggingface_hub>=0.20  # spec: HED weights / pretrained loading
+controlnet_aux>=0.0.7  # HED detector (auto-downloads weights from HF Hub)
 
 # Distortions / augmentation (Week 7+, Week 10 dataloader)
 albumentations>=1.3
