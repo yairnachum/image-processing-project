@@ -13,7 +13,7 @@ def test_run_clean_stage_writes_three_csvs(tiny_test_split: Path, tmp_path: Path
         results_root=results,
         outputs_root=outputs,
     )
-    for task in ["detection", "edges", "orb"]:
+    for task in ["detections", "edges", "orb"]:
         csv = results / "clean" / f"{task}.csv"
         assert csv.exists(), csv
         df = pd.read_csv(csv)

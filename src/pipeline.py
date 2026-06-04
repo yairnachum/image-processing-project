@@ -13,13 +13,13 @@ from src.models.edges import HED
 from src.models.orb import ORB
 
 
-def _save_yolo_txt(boxes_xyxy, classes, scores, tile_size, out_path):
+def _save_yolo_txt(boxes_xyxy, classes, scores, img_w, img_h, out_path):
     lines = []
     for (x1, y1, x2, y2), c, s in zip(boxes_xyxy, classes, scores):
-        cx = ((x1 + x2) / 2) / tile_size
-        cy = ((y1 + y2) / 2) / tile_size
-        bw = (x2 - x1) / tile_size
-        bh = (y2 - y1) / tile_size
+        cx = ((x1 + x2) / 2) / img_w
+        cy = ((y1 + y2) / 2) / img_h
+        bw = (x2 - x1) / img_w
+        bh = (y2 - y1) / img_h
         lines.append(f"{int(c)} {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f} {float(s):.6f}")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(lines))
@@ -33,7 +33,7 @@ def run_clean_stage(
     """Run YOLOv8s, HED, and ORB on every tile in clean_root/test/images.
 
     Writes:
-      results_root/clean/{detection,edges,orb}.csv
+      results_root/clean/{detections,edges,orb}.csv
       outputs_root/clean/{detections,edges,orb}/<name>.{txt,png,npz}
     """
     clean_root   = clean_root   or config.CLEAN_ROOT
@@ -65,7 +65,7 @@ def run_clean_stage(
             "mean_conf": float(d["scores"].mean()) if len(d["scores"]) else 0.0,
         })
         _save_yolo_txt(
-            d["boxes_xyxy"], d["classes"], d["scores"], w,
+            d["boxes_xyxy"], d["classes"], d["scores"], w, h,
             outputs_root / "clean" / "detections" / f"{name}.txt",
         )
 
@@ -93,6 +93,6 @@ def run_clean_stage(
 
     csv_dir = results_root / "clean"
     csv_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(det_rows ).to_csv(csv_dir / "detection.csv", index=False)
-    pd.DataFrame(edge_rows).to_csv(csv_dir / "edges.csv",     index=False)
-    pd.DataFrame(orb_rows ).to_csv(csv_dir / "orb.csv",       index=False)
+    pd.DataFrame(det_rows ).to_csv(csv_dir / "detections.csv", index=False)
+    pd.DataFrame(edge_rows).to_csv(csv_dir / "edges.csv",      index=False)
+    pd.DataFrame(orb_rows ).to_csv(csv_dir / "orb.csv",        index=False)
