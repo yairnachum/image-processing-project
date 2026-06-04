@@ -21,6 +21,7 @@ Thumbs.db
 
 # Data & models (large, not for git) — tracked dataset samples can be added explicitly
 data/raw/
+data/clean/
 data/distorted/
 data/restored/
 data/processed/

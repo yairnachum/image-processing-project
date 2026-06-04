@@ -17,6 +17,10 @@ ipywidgets>=8.0
 ultralytics>=8.0       # YOLOv8
 torch>=2.0
 torchvision>=0.15
+huggingface_hub>=0.20  # spec: HED weights / pretrained loading
+
+# Distortions / augmentation (Week 7+, Week 10 dataloader)
+albumentations>=1.3
 
 # Evaluation (Week 6+)
 scikit-learn>=1.3
