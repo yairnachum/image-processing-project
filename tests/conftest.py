@@ -9,7 +9,7 @@ import pytest
 
 @pytest.fixture
 def synth_rgb_tile() -> np.ndarray:
-    """A 256x256 BGR uint8 image with a textured pattern (good for ORB)."""
+    """A 256x256 RGB uint8 image with a textured pattern (good for ORB and HED)."""
     rng = np.random.default_rng(7)
     img = rng.integers(0, 255, size=(256, 256, 3), dtype=np.uint8)
     # Add some hard edges so ORB and HED have something to detect
