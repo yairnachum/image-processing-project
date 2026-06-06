@@ -6,8 +6,12 @@ import matplotlib
 
 matplotlib.use("Agg")  # non-interactive backend; safe for CI / headless runs
 
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+
+from src import config
 
 
 def plot_perclass_bar(
@@ -45,12 +49,8 @@ def plot_perclass_bar(
     plt.close(fig)
 
 
-import cv2
-import numpy as np
-
-from src import config
-
-
+# TODO: dedupe with measure._read_yolo_labels — same parser, slightly
+# different return conventions for the no-conf case.
 def _read_yolo(path: Path, with_conf: bool) -> tuple:
     if not path.exists() or path.stat().st_size == 0:
         return np.zeros((0, 4)), np.zeros((0,), dtype=np.int32), np.zeros((0,))

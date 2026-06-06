@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import cv2
+import numpy as np
 import pandas as pd
 
-from src.figures import plot_perclass_bar
+from src.figures import plot_perclass_bar, plot_predictions_grid
 
 
 def test_plot_perclass_bar_writes_png(tmp_path: Path):
@@ -26,12 +28,6 @@ def test_plot_perclass_bar_writes_png(tmp_path: Path):
     )
     assert out.exists()
     assert out.stat().st_size > 1000
-
-
-import cv2
-import numpy as np
-
-from src.figures import plot_predictions_grid
 
 
 def test_plot_predictions_grid_writes_png(tmp_path: Path):
