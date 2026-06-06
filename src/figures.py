@@ -7,7 +7,6 @@ import matplotlib
 matplotlib.use("Agg")  # non-interactive backend; safe for CI / headless runs
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 
@@ -34,8 +33,10 @@ def plot_perclass_bar(
     ax.set_ylabel(ylabel)
     ax.set_ylim(0, max(0.01, float(df[value_col].max()) * 1.15))
     plt.xticks(rotation=45, ha="right")
-    for x, v in zip(df["class_name"], df[value_col]):
-        ax.text(x, v + 0.005, f"{v:.2f}", ha="center", va="bottom", fontsize=8)
+    # Use integer positions for value labels — passing the category string into
+    # ax.text triggers a matplotlib deprecation in modern versions.
+    for i, v in enumerate(df[value_col]):
+        ax.text(i, v + 0.005, f"{v:.2f}", ha="center", va="bottom", fontsize=8)
     mean_val = float(df[value_col].mean())
     ax.axhline(mean_val, color="red", linestyle="--", linewidth=1, label=f"mean = {mean_val:.3f}")
     ax.legend(loc="upper right")
