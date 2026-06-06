@@ -109,3 +109,107 @@ def ap_per_class(
 
         out[c] = {"ap": float(ap), "n_gt": int(n_gt), "n_pred": int(n_pred)}
     return out
+
+
+import cv2
+
+
+def _yolo_to_xyxy(box_norm: np.ndarray, img_w: int, img_h: int) -> tuple:
+    """YOLO `(cx, cy, w, h)` normalized → pixel `(x1, y1, x2, y2)` ints."""
+    cx, cy, bw, bh = box_norm
+    x1 = int(round((cx - bw / 2) * img_w))
+    y1 = int(round((cy - bh / 2) * img_h))
+    x2 = int(round((cx + bw / 2) * img_w))
+    y2 = int(round((cy + bh / 2) * img_h))
+    return x1, y1, x2, y2
+
+
+def render_class_edge_map(
+    boxes_yolo_norm: np.ndarray,
+    classes: np.ndarray,
+    img_size: tuple,
+    target_class: int,
+    dilate_px: int = 2,
+) -> np.ndarray:
+    """Render a binary edge map (uint8, 0/255) of dilated AABB *outlines* for
+    boxes of `target_class` only.
+
+    `boxes_yolo_norm` is shape (N, 4) in YOLO (cx, cy, w, h) normalised coords.
+    `img_size` is (H, W).
+    Returns (H, W) uint8 with values in {0, 255}.
+    """
+    h, w = img_size
+    canvas = np.zeros((h, w), dtype=np.uint8)
+    for box, c in zip(boxes_yolo_norm, classes):
+        if int(c) != int(target_class):
+            continue
+        x1, y1, x2, y2 = _yolo_to_xyxy(box, w, h)
+        x1, x2 = sorted((max(0, x1), min(w - 1, x2)))
+        y1, y2 = sorted((max(0, y1), min(h - 1, y2)))
+        if x2 <= x1 or y2 <= y1:
+            continue
+        cv2.rectangle(canvas, (x1, y1), (x2, y2), 255, thickness=1)
+    if dilate_px > 0:
+        k = 2 * dilate_px + 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+        canvas = cv2.dilate(canvas, kernel)
+    return canvas
+
+
+def f_score_with_tolerance(
+    pred_bin: np.ndarray,
+    gt_bin: np.ndarray,
+    tolerance_px: int = 2,
+) -> float:
+    """Pixel-wise F1 with a `tolerance_px` morphological slack on both sides.
+
+    A predicted edge counts as TP if there is a GT edge within `tolerance_px`,
+    and a GT edge counts as recalled if there is a prediction within `tolerance_px`.
+    """
+    if pred_bin.dtype != bool:
+        pred_bin = pred_bin.astype(bool)
+    if gt_bin.dtype != bool:
+        gt_bin = gt_bin.astype(bool)
+
+    if not pred_bin.any() and not gt_bin.any():
+        return 1.0
+    if not pred_bin.any() or not gt_bin.any():
+        return 0.0
+
+    k = 2 * tolerance_px + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+    pred_dil = cv2.dilate(pred_bin.astype(np.uint8), kernel).astype(bool)
+    gt_dil = cv2.dilate(gt_bin.astype(np.uint8), kernel).astype(bool)
+
+    tp_pred = int((pred_bin & gt_dil).sum())
+    tp_gt = int((gt_bin & pred_dil).sum())
+    fp = int((pred_bin & ~gt_dil).sum())
+    fn = int((gt_bin & ~pred_dil).sum())
+
+    precision = tp_pred / max(tp_pred + fp, 1)
+    recall = tp_gt / max(tp_gt + fn, 1)
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
+def ods_per_image(
+    pred_u8: np.ndarray,
+    gt_bin: np.ndarray,
+    thresholds: np.ndarray = None,
+    tolerance_px: int = 2,
+) -> tuple:
+    """Single-image ODS: sweep `thresholds`, return (best_threshold, best_f).
+
+    `pred_u8`: HxW uint8 saliency map.
+    `gt_bin`:  HxW bool edge mask.
+    """
+    if thresholds is None:
+        thresholds = np.linspace(20, 235, 30, dtype=np.uint8)
+    best_t, best_f = int(thresholds[0]), 0.0
+    for t in thresholds:
+        pb = pred_u8 > int(t)
+        f = f_score_with_tolerance(pb, gt_bin, tolerance_px=tolerance_px)
+        if f > best_f:
+            best_f, best_t = f, int(t)
+    return best_t, best_f
