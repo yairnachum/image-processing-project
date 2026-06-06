@@ -26,3 +26,35 @@ def test_plot_perclass_bar_writes_png(tmp_path: Path):
     )
     assert out.exists()
     assert out.stat().st_size > 1000
+
+
+import cv2
+import numpy as np
+
+from src.figures import plot_predictions_grid
+
+
+def test_plot_predictions_grid_writes_png(tmp_path: Path):
+    clean_root = tmp_path / "data" / "clean"
+    outputs_root = tmp_path / "outputs"
+    img_dir = clean_root / "test" / "images"
+    lbl_dir = clean_root / "test" / "labels"
+    det_dir = outputs_root / "clean" / "detections"
+    edge_dir = outputs_root / "clean" / "edges"
+    for d in (img_dir, lbl_dir, det_dir, edge_dir):
+        d.mkdir(parents=True)
+    for name in ("tile_0", "tile_1"):
+        cv2.imwrite(str(img_dir / f"{name}.png"), np.full((256, 256, 3), 80, dtype=np.uint8))
+        (lbl_dir / f"{name}.txt").write_text("0 0.5 0.5 0.4 0.4\n")
+        (det_dir / f"{name}.txt").write_text("0 0.5 0.5 0.4 0.4 0.85\n")
+        cv2.imwrite(str(edge_dir / f"{name}.png"), np.full((256, 256), 120, dtype=np.uint8))
+
+    out = tmp_path / "grid.png"
+    plot_predictions_grid(
+        clean_root,
+        outputs_root,
+        sample_names=["tile_0", "tile_1"],
+        out_path=out,
+    )
+    assert out.exists()
+    assert out.stat().st_size > 1000
