@@ -1,7 +1,7 @@
 """Read clean-stage predictions + GT, compute per-class detection + edge metrics."""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -78,6 +78,8 @@ def measure_clean_stage(
     for tile in tiles:
         name = tile.stem
         img = cv2.imread(str(tile))
+        if img is None:
+            raise RuntimeError(f"failed to read {tile}")
         h, w = img.shape[:2]
         gt_boxes, gt_classes, _ = _read_yolo_labels(lbl_dir / f"{name}.txt", with_conf=False)
         for box, c in zip(gt_boxes, gt_classes):
@@ -118,6 +120,8 @@ def measure_clean_stage(
     for tile in tiles:
         name = tile.stem
         img = cv2.imread(str(tile))
+        if img is None:
+            raise RuntimeError(f"failed to read {tile}")
         h, w = img.shape[:2]
         edge_pred = cv2.imread(str(edge_dir / f"{name}.png"), cv2.IMREAD_GRAYSCALE)
         if edge_pred is None:
@@ -138,7 +142,11 @@ def measure_clean_stage(
     edge_df = pd.DataFrame(edge_rows)
     edge_df.to_csv(out_dir / "edge_metrics.csv", index=False)
 
-    # Dataset-wide best threshold = mean across the per-image ODS thresholds.
+    # Dataset-wide threshold proxy: mean of per-image ODS thresholds.
+    # NOTE: True BSDS500 ODS-T is a single threshold that maximizes mean F across
+    # the dataset; "mean of per-image bests" is a correlated but not identical
+    # proxy. We use it because it's cheap and adequate for the project's
+    # relative-comparison purpose (clean vs distorted vs restored).
     global_t = int(np.round(edge_df["ods_threshold"].mean())) if len(edge_df) else 128
 
     # --- Per-class edge F-score at global threshold ---
