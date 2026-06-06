@@ -5,6 +5,7 @@ All boxes use xyxy in pixel coordinates unless otherwise noted.
 
 from typing import Dict, List
 
+import cv2
 import numpy as np
 
 
@@ -109,9 +110,6 @@ def ap_per_class(
 
         out[c] = {"ap": float(ap), "n_gt": int(n_gt), "n_pred": int(n_pred)}
     return out
-
-
-import cv2
 
 
 def _yolo_to_xyxy(box_norm: np.ndarray, img_w: int, img_h: int) -> tuple:

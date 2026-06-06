@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 
 from src.metrics import iou_xyxy, ap_per_class
 from src.metrics import render_class_edge_map, f_score_with_tolerance, ods_per_image
