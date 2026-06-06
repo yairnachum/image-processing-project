@@ -92,6 +92,38 @@ To be added per stage:
 - **Enhanced** — comparison tables vs. distorted, side-by-side grids.
 - **Fine-tuned** — comparison tables vs. distorted baseline.
 
+## Week 6 — Clean baseline metrics
+
+### Detection (YOLOv8s, COCO-pretrained, zero-shot on DOTA)
+
+| Metric | Value |
+|--------|-------|
+| mAP@0.5 (mean over classes with GT) | 0.000 |
+| Tiles with ≥1 detection | 22 / 40 |
+
+![Per-class AP@0.5](outputs/figures/clean_perclass_mAP.png)
+
+YOLOv8s is COCO-pretrained, so most DOTA classes (plane, ship, storage-tank, …) are out of distribution. This is the baseline that Week 10 fine-tuning is intended to improve.
+
+### Edge detection (HED, BSDS500-pretrained)
+
+| Metric | Value |
+|--------|-------|
+| Mean per-image ODS F-score | 0.175 |
+| Best dataset-wide threshold | 130.8 |
+
+![Per-class edge F-score](outputs/figures/clean_perclass_edges_F.png)
+
+Edge GT is dilated AABB outlines from the YOLO labels — a proxy, not human-annotated edges. The relative drop clean→distorted is the meaningful signal.
+
+### Sample predictions (4 tiles: top-2 and bottom-2 by detection count)
+
+![Predictions grid](outputs/figures/clean_predictions_grid.png)
+
+### Feature matching (ORB)
+
+ORB's good-match ratio is **distorted vs clean** by construction; on the clean stage alone it is trivially 1.0. Real numbers land in Week 8 (distorted stage).
+
 ## Repository layout (planned)
 
 ```
