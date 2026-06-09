@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from src.figures import plot_perclass_bar, plot_predictions_grid, plot_distortion_grid
+from src.figures import plot_perclass_bar, plot_predictions_grid, plot_distortion_grid, plot_metric_vs_snr
 
 
 def test_plot_perclass_bar_writes_png(tmp_path: Path):
@@ -83,6 +83,27 @@ def test_plot_distortion_grid_writes_png(tmp_path: Path):
         distortion="haze",
         levels=levels,
         sample_names=[f"tile_{i}" for i in range(4)],
+        out_path=out,
+    )
+    assert out.exists()
+    assert out.stat().st_size > 1000
+
+
+def test_plot_metric_vs_snr_writes_png(tmp_path: Path):
+    df = pd.DataFrame([
+        {"distortion": "haze",  "snr_db_mean": 1.0, "value": 0.10},
+        {"distortion": "haze",  "snr_db_mean": 7.0, "value": 0.30},
+        {"distortion": "jpeg",  "snr_db_mean": 13.0, "value": 0.20},
+        {"distortion": "jpeg",  "snr_db_mean": 22.0, "value": 0.45},
+        {"distortion": "noise", "snr_db_mean": 8.0, "value": 0.18},
+        {"distortion": "noise", "snr_db_mean": 23.0, "value": 0.40},
+    ])
+    out = tmp_path / "curve.png"
+    plot_metric_vs_snr(
+        df,
+        value_col="value",
+        title="Test",
+        ylabel="value",
         out_path=out,
     )
     assert out.exists()

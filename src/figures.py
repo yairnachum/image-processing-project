@@ -160,3 +160,37 @@ def plot_distortion_grid(
     plt.tight_layout()
     plt.savefig(out_path, dpi=120)
     plt.close(fig)
+
+
+def plot_metric_vs_snr(
+    df: pd.DataFrame,
+    value_col: str,
+    title: str,
+    ylabel: str,
+    out_path: Path,
+    snr_col: str = "snr_db_mean",
+    group_col: str = "distortion",
+) -> None:
+    """One curve per group (distortion) plotting `value_col` against `snr_col`.
+
+    Rows within a group are sorted ascending by `snr_col`. NaN values in either
+    `value_col` or `snr_col` are dropped before plotting.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors = {"haze": "tab:blue", "jpeg": "tab:orange", "noise": "tab:green"}
+    for name, sub in df.dropna(subset=[value_col, snr_col]).groupby(group_col):
+        sub = sub.sort_values(snr_col)
+        ax.plot(
+            sub[snr_col], sub[value_col],
+            marker="o", label=str(name),
+            color=colors.get(str(name)),
+        )
+    ax.set_xlabel("SNR (dB)")
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=130)
+    plt.close(fig)
