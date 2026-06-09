@@ -1,4 +1,4 @@
-"""Read clean-stage predictions + GT, compute per-class detection + edge metrics."""
+"""Read stage predictions + GT, compute per-class detection + edge metrics."""
 
 from pathlib import Path
 from typing import Optional
@@ -25,32 +25,66 @@ def _norm_to_xyxy(box_norm: np.ndarray, w: int, h: int) -> np.ndarray:
     )
 
 
-def measure_clean_stage(
+def measure_stage(
+    stage: str,
     clean_root: Optional[Path] = None,
     results_root: Optional[Path] = None,
     outputs_root: Optional[Path] = None,
+    image_dir: Optional[Path] = None,
+    gt_label_dir: Optional[Path] = None,
 ) -> None:
-    """Compute Week 6 metrics on the existing Week 5 clean-stage outputs.
+    """Compute per-class detection + edge metrics for any pipeline stage.
+
+    Parameters
+    ----------
+    stage:
+        Logical stage name used to locate outputs and write results.
+        For the clean stage this is ``"clean"``; for a distorted variant it is
+        e.g. ``"distorted/haze/0.5"``.  The value is used as a sub-path under
+        both ``outputs_root`` and ``results_root``.
+    clean_root:
+        Root of the clean dataset (``<clean_root>/test/{images,labels}``).
+        Resolved against ``config.CLEAN_ROOT`` if not given.  Used as the
+        default source for ``image_dir`` and ``gt_label_dir`` when those are
+        not supplied explicitly.
+    results_root:
+        Where CSV results are written (``<results_root>/<stage>/``).
+        Resolved against ``config.RESULTS_ROOT`` if not given.
+    outputs_root:
+        Where model outputs live (``<outputs_root>/<stage>/{detections,edges}/``).
+        Resolved against ``config.OUTPUTS_ROOT`` if not given.
+    image_dir:
+        Directory containing the input ``.png`` tiles for this stage.
+        Defaults to ``clean_root / "test" / "images"`` when omitted, which is
+        the correct path for the clean stage and for any stage whose images
+        live under the clean split.  Pass an explicit path for distorted or
+        enhanced stages whose images differ from the clean images.
+    gt_label_dir:
+        Directory containing ground-truth YOLO ``.txt`` label files.
+        Defaults to ``clean_root / "test" / "labels"`` when omitted.  For
+        distorted/enhanced stages the GT labels are still the clean ones, so
+        callers should pass the clean label directory explicitly.
 
     Reads:
-      clean_root/test/{images,labels}/<name>.{png,txt}
-      outputs_root/clean/detections/<name>.txt   (cls cx cy w h conf, YOLO-normalised)
-      outputs_root/clean/edges/<name>.png        (uint8 HED saliency)
+      <image_dir>/<name>.png
+      <gt_label_dir>/<name>.txt
+      outputs_root/<stage>/detections/<name>.txt   (cls cx cy w h conf, YOLO-normalised)
+      outputs_root/<stage>/edges/<name>.png        (uint8 HED saliency)
 
     Writes:
-      results_root/clean/perclass_detections.csv
-      results_root/clean/edge_metrics.csv
-      results_root/clean/perclass_edges.csv
+      results_root/<stage>/perclass_detections.csv
+      results_root/<stage>/edge_metrics.csv
+      results_root/<stage>/perclass_edges.csv
     """
     clean_root = clean_root or config.CLEAN_ROOT
     results_root = results_root or config.RESULTS_ROOT
     outputs_root = outputs_root or config.OUTPUTS_ROOT
 
-    img_dir = clean_root / "test" / "images"
-    lbl_dir = clean_root / "test" / "labels"
-    det_dir = outputs_root / "clean" / "detections"
-    edge_dir = outputs_root / "clean" / "edges"
-    out_dir = results_root / "clean"
+    img_dir = image_dir if image_dir is not None else clean_root / "test" / "images"
+    lbl_dir = gt_label_dir if gt_label_dir is not None else clean_root / "test" / "labels"
+    det_dir = outputs_root / stage / "detections"
+    edge_dir = outputs_root / stage / "edges"
+    out_dir = results_root / stage
     out_dir.mkdir(parents=True, exist_ok=True)
 
     tiles = sorted(img_dir.glob("*.png"))
@@ -158,3 +192,17 @@ def measure_clean_stage(
             }
         )
     pd.DataFrame(perclass_rows).to_csv(out_dir / "perclass_edges.csv", index=False)
+
+
+def measure_clean_stage(
+    clean_root: Optional[Path] = None,
+    results_root: Optional[Path] = None,
+    outputs_root: Optional[Path] = None,
+) -> None:
+    """Thin wrapper preserving the W6 entry point."""
+    measure_stage(
+        stage="clean",
+        clean_root=clean_root,
+        results_root=results_root,
+        outputs_root=outputs_root,
+    )
