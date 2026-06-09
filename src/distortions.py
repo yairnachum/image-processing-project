@@ -4,6 +4,7 @@ No file I/O — callers pass numpy arrays in and get numpy arrays out.
 Coordinates: HxWx3 uint8 RGB in, HxWx3 uint8 RGB out.
 """
 
+import cv2
 import numpy as np
 
 
@@ -31,3 +32,15 @@ def apply_haze(img_rgb_u8: np.ndarray, beta: float) -> np.ndarray:
     J = img_rgb_u8.astype(np.float32)
     I = J * t + A[None, None, :] * (1.0 - t)
     return np.clip(I, 0, 255).astype(np.uint8)
+
+
+def apply_jpeg(img_rgb_u8: np.ndarray, q: int) -> np.ndarray:
+    """JPEG round-trip at quality `q` (1..100). RGB↔BGR around the cv2 call."""
+    bgr = cv2.cvtColor(img_rgb_u8, cv2.COLOR_RGB2BGR)
+    ok, buf = cv2.imencode(".jpg", bgr, [int(cv2.IMWRITE_JPEG_QUALITY), int(q)])
+    if not ok:
+        raise RuntimeError(f"cv2.imencode failed at quality {q}")
+    decoded_bgr = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    if decoded_bgr is None:
+        raise RuntimeError(f"cv2.imdecode failed at quality {q}")
+    return cv2.cvtColor(decoded_bgr, cv2.COLOR_BGR2RGB)

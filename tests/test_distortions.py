@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.distortions import apply_haze, estimate_airlight
+from src.distortions import apply_haze, apply_jpeg, estimate_airlight
 
 
 def test_estimate_airlight_returns_shape_3():
@@ -41,3 +41,24 @@ def test_apply_haze_large_beta_pushes_toward_airlight():
     # and A ≈ 240 from the bright patch, the expected mean ≈ 238.5. A slack of 5
     # catches sign-flip / formula-swap regressions that a looser bound would miss.
     assert abs(out.mean() - 240) < 5
+
+
+def _make_textured_tile(seed: int = 0, size: int = 128) -> np.ndarray:
+    """Random texture so JPEG quantization has something to mangle."""
+    rng = np.random.default_rng(seed)
+    img = rng.integers(0, 256, size=(size, size, 3), dtype=np.uint8)
+    return img
+
+
+def test_apply_jpeg_returns_uint8_same_shape():
+    img = _make_textured_tile()
+    out = apply_jpeg(img, q=40)
+    assert out.dtype == np.uint8
+    assert out.shape == img.shape
+
+
+def test_apply_jpeg_q1_loses_more_than_q40():
+    img = _make_textured_tile()
+    err_q1 = float(np.mean((img.astype(np.float32) - apply_jpeg(img, q=1).astype(np.float32)) ** 2))
+    err_q40 = float(np.mean((img.astype(np.float32) - apply_jpeg(img, q=40).astype(np.float32)) ** 2))
+    assert err_q1 > err_q40, f"q=1 should be lossier than q=40, got MSE {err_q1} vs {err_q40}"
