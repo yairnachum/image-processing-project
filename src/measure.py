@@ -13,7 +13,7 @@ from src.metrics import (
     ap_per_class,
     f_score_with_tolerance,
     ods_per_image,
-    render_class_edge_map,
+    render_class_aabb_edges,
 )
 
 
@@ -115,7 +115,7 @@ def measure_clean_stage(
         gt_all = np.zeros((h, w), dtype=np.uint8)
         for c in np.unique(gt_classes):
             gt_all = np.maximum(
-                gt_all, render_class_edge_map(gt_boxes, gt_classes, (h, w), int(c), dilate_px=2)
+                gt_all, render_class_aabb_edges(gt_boxes, gt_classes, (h, w), int(c), dilate_px=2)
             )
         gt_all_bin = gt_all > 0
         best_t, best_f = ods_per_image(edge_pred, gt_all_bin)
@@ -142,7 +142,7 @@ def measure_clean_stage(
             if not (classes == c).any():
                 continue
             h, w = per_image_size[name]
-            gt_c = render_class_edge_map(boxes, classes, (h, w), c, dilate_px=2)
+            gt_c = render_class_aabb_edges(boxes, classes, (h, w), c, dilate_px=2)
             gt_c_bin = gt_c > 0
             if not gt_c_bin.any():
                 continue

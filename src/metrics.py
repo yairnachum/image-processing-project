@@ -122,7 +122,7 @@ def _yolo_to_xyxy(box_norm: np.ndarray, img_w: int, img_h: int) -> tuple:
     return x1, y1, x2, y2
 
 
-def render_class_edge_map(
+def render_class_aabb_edges(
     boxes_yolo_norm: np.ndarray,
     classes: np.ndarray,
     img_size: tuple,
@@ -131,6 +131,10 @@ def render_class_edge_map(
 ) -> np.ndarray:
     """Render a binary edge map (uint8, 0/255) of dilated AABB *outlines* for
     boxes of `target_class` only.
+
+    Operates on axis-aligned bounding boxes — when OBB ground truth lands, a
+    separate `render_class_obb_edges` helper should be added rather than
+    overloading this one.
 
     `boxes_yolo_norm` is shape (N, 4) in YOLO (cx, cy, w, h) normalised coords.
     `img_size` is (H, W).

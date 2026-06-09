@@ -1,7 +1,7 @@
 import numpy as np
 
 from src.metrics import iou_xyxy, ap_per_class
-from src.metrics import render_class_edge_map, f_score_with_tolerance, ods_per_image
+from src.metrics import render_class_aabb_edges, f_score_with_tolerance, ods_per_image
 
 
 def test_iou_xyxy_identical_boxes():
@@ -69,12 +69,12 @@ def test_ap_per_class_false_positive_drops_precision():
     assert abs(result[0]["ap"] - 0.5) < 1e-6
 
 
-def test_render_class_edge_map_draws_rectangles():
+def test_render_class_aabb_edges_draws_rectangles():
     """A single AABB centered at (0.5, 0.5) with size (0.4, 0.4) on a 100x100 image
     should produce a hollow rectangle outline (0/255), not a filled rectangle."""
     boxes = np.array([[0.5, 0.5, 0.4, 0.4]], dtype=np.float32)
     classes = np.array([0], dtype=np.int32)
-    edge = render_class_edge_map(boxes, classes, img_size=(100, 100), target_class=0, dilate_px=1)
+    edge = render_class_aabb_edges(boxes, classes, img_size=(100, 100), target_class=0, dilate_px=1)
     assert edge.shape == (100, 100)
     assert edge.dtype == np.uint8
     assert set(np.unique(edge).tolist()) <= {0, 255}
@@ -83,13 +83,13 @@ def test_render_class_edge_map_draws_rectangles():
     assert edge[30, 30] == 255 or edge[31, 30] == 255 or edge[30, 31] == 255   # top-left corner area
 
 
-def test_render_class_edge_map_filters_by_class():
+def test_render_class_aabb_edges_filters_by_class():
     boxes = np.array([
         [0.25, 0.5, 0.2, 0.2],   # class 0
         [0.75, 0.5, 0.2, 0.2],   # class 1
     ], dtype=np.float32)
     classes = np.array([0, 1], dtype=np.int32)
-    edge = render_class_edge_map(boxes, classes, img_size=(100, 100), target_class=0, dilate_px=1)
+    edge = render_class_aabb_edges(boxes, classes, img_size=(100, 100), target_class=0, dilate_px=1)
     # Left half (x ~ 25) should have edges, right half (x ~ 75) should be black.
     assert edge[:, 0:50].sum() > 0
     assert edge[:, 50:].sum() == 0
