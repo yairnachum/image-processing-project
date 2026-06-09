@@ -117,3 +117,46 @@ def plot_predictions_grid(
     plt.tight_layout()
     plt.savefig(out_path, dpi=120)
     plt.close(fig)
+
+
+def plot_distortion_grid(
+    clean_root: Path,
+    distorted_root: Path,
+    distortion: str,
+    levels: list,
+    sample_names: list,
+    out_path: Path,
+) -> None:
+    """One row per sample tile; columns are (clean, then each `levels[i]`)
+    for the chosen `distortion`. Distorted tiles live at
+    `distorted_root/{distortion}/{level}/test/images/<name>.png`.
+    """
+    n_rows = len(sample_names)
+    n_cols = 1 + len(levels)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols, 3 * n_rows))
+    if n_rows == 1:
+        axes = axes[np.newaxis, :]
+
+    for row, name in enumerate(sample_names):
+        clean_path = clean_root / "test" / "images" / f"{name}.png"
+        clean = cv2.imread(str(clean_path))
+        if clean is None:
+            raise FileNotFoundError(f"missing clean tile {clean_path}")
+        clean = cv2.cvtColor(clean, cv2.COLOR_BGR2RGB)
+        axes[row, 0].imshow(clean)
+        axes[row, 0].set_title(f"{name} — clean", fontsize=9)
+        axes[row, 0].axis("off")
+        for col, lvl in enumerate(levels, start=1):
+            dpath = distorted_root / distortion / lvl / "test" / "images" / f"{name}.png"
+            d = cv2.imread(str(dpath))
+            if d is None:
+                raise FileNotFoundError(f"missing distorted tile {dpath}")
+            d = cv2.cvtColor(d, cv2.COLOR_BGR2RGB)
+            axes[row, col].imshow(d)
+            axes[row, col].set_title(f"{distortion}={lvl}", fontsize=9)
+            axes[row, col].axis("off")
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=120)
+    plt.close(fig)

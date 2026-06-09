@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from src.figures import plot_perclass_bar, plot_predictions_grid
+from src.figures import plot_perclass_bar, plot_predictions_grid, plot_distortion_grid
 
 
 def test_plot_perclass_bar_writes_png(tmp_path: Path):
@@ -50,6 +50,39 @@ def test_plot_predictions_grid_writes_png(tmp_path: Path):
         clean_root,
         outputs_root,
         sample_names=["tile_0", "tile_1"],
+        out_path=out,
+    )
+    assert out.exists()
+    assert out.stat().st_size > 1000
+
+
+def test_plot_distortion_grid_writes_png(tmp_path: Path):
+    clean_dir = tmp_path / "clean" / "test" / "images"
+    dist_root = tmp_path / "distorted"
+    clean_dir.mkdir(parents=True)
+    rng = np.random.default_rng(0)
+    for i in range(4):
+        cv2.imwrite(
+            str(clean_dir / f"tile_{i}.png"),
+            rng.integers(0, 256, size=(128, 128, 3), dtype=np.uint8),
+        )
+    levels = ["0.5", "1.5", "3.0"]
+    for lvl in levels:
+        out_dir = dist_root / "haze" / lvl / "test" / "images"
+        out_dir.mkdir(parents=True)
+        for i in range(4):
+            cv2.imwrite(
+                str(out_dir / f"tile_{i}.png"),
+                rng.integers(0, 256, size=(128, 128, 3), dtype=np.uint8),
+            )
+
+    out = tmp_path / "grid.png"
+    plot_distortion_grid(
+        clean_root=tmp_path / "clean",
+        distorted_root=dist_root,
+        distortion="haze",
+        levels=levels,
+        sample_names=[f"tile_{i}" for i in range(4)],
         out_path=out,
     )
     assert out.exists()
