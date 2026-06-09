@@ -8,29 +8,13 @@ import numpy as np
 import pandas as pd
 
 from src import config
+from src.io_yolo import read_yolo_labels
 from src.metrics import (
     ap_per_class,
     f_score_with_tolerance,
     ods_per_image,
     render_class_edge_map,
 )
-
-
-def _read_yolo_labels(path: Path, with_conf: bool) -> tuple:
-    """Parse a YOLO label file → (boxes_norm (N,4), classes (N,), confs (N,) or None)."""
-    if not path.exists() or path.stat().st_size == 0:
-        return (
-            np.zeros((0, 4), dtype=np.float32),
-            np.zeros((0,), dtype=np.int32),
-            np.zeros((0,), dtype=np.float32) if with_conf else None,
-        )
-    rows = [r.split() for r in path.read_text().splitlines() if r.strip()]
-    classes = np.array([int(r[0]) for r in rows], dtype=np.int32)
-    boxes = np.array([[float(x) for x in r[1:5]] for r in rows], dtype=np.float32)
-    confs = (
-        np.array([float(r[5]) for r in rows], dtype=np.float32) if with_conf else None
-    )
-    return boxes, classes, confs
 
 
 def _norm_to_xyxy(box_norm: np.ndarray, w: int, h: int) -> np.ndarray:
@@ -81,10 +65,10 @@ def measure_clean_stage(
         if img is None:
             raise RuntimeError(f"failed to read {tile}")
         h, w = img.shape[:2]
-        gt_boxes, gt_classes, _ = _read_yolo_labels(lbl_dir / f"{name}.txt", with_conf=False)
+        gt_boxes, gt_classes, _ = read_yolo_labels(lbl_dir / f"{name}.txt", with_conf=False)
         for box, c in zip(gt_boxes, gt_classes):
             gt.append({"image_id": name, "class_id": int(c), "xyxy": _norm_to_xyxy(box, w, h)})
-        pred_boxes, pred_classes, pred_confs = _read_yolo_labels(
+        pred_boxes, pred_classes, pred_confs = read_yolo_labels(
             det_dir / f"{name}.txt", with_conf=True
         )
         for box, c, s in zip(pred_boxes, pred_classes, pred_confs):
@@ -126,7 +110,7 @@ def measure_clean_stage(
         edge_pred = cv2.imread(str(edge_dir / f"{name}.png"), cv2.IMREAD_GRAYSCALE)
         if edge_pred is None:
             raise FileNotFoundError(f"missing edge map for {name}")
-        gt_boxes, gt_classes, _ = _read_yolo_labels(lbl_dir / f"{name}.txt", with_conf=False)
+        gt_boxes, gt_classes, _ = read_yolo_labels(lbl_dir / f"{name}.txt", with_conf=False)
         # Aggregate GT edges across all classes for the per-image ODS.
         gt_all = np.zeros((h, w), dtype=np.uint8)
         for c in np.unique(gt_classes):

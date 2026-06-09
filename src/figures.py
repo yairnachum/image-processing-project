@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from src import config
+from src.io_yolo import read_yolo_labels
 
 
 def plot_perclass_bar(
@@ -47,18 +48,6 @@ def plot_perclass_bar(
     plt.tight_layout()
     plt.savefig(out_path, dpi=130)
     plt.close(fig)
-
-
-# TODO: dedupe with measure._read_yolo_labels — same parser, slightly
-# different return conventions for the no-conf case.
-def _read_yolo(path: Path, with_conf: bool) -> tuple:
-    if not path.exists() or path.stat().st_size == 0:
-        return np.zeros((0, 4)), np.zeros((0,), dtype=np.int32), np.zeros((0,))
-    rows = [r.split() for r in path.read_text().splitlines() if r.strip()]
-    classes = np.array([int(r[0]) for r in rows], dtype=np.int32)
-    boxes = np.array([[float(x) for x in r[1:5]] for r in rows], dtype=np.float32)
-    confs = np.array([float(r[5]) for r in rows], dtype=np.float32) if with_conf else np.ones(len(rows))
-    return boxes, classes, confs
 
 
 def _draw_boxes(img_rgb: np.ndarray, boxes_norm: np.ndarray, classes: np.ndarray, color: tuple) -> np.ndarray:
@@ -99,10 +88,10 @@ def plot_predictions_grid(
             raise FileNotFoundError(f"missing image {name}.png")
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-        gt_boxes, gt_classes, _ = _read_yolo(
+        gt_boxes, gt_classes, _ = read_yolo_labels(
             clean_root / "test" / "labels" / f"{name}.txt", with_conf=False
         )
-        pred_boxes, pred_classes, _ = _read_yolo(
+        pred_boxes, pred_classes, _ = read_yolo_labels(
             outputs_root / "clean" / "detections" / f"{name}.txt", with_conf=True
         )
         edge = cv2.imread(
