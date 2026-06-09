@@ -65,3 +65,17 @@ def seed_for_tile(name: str) -> int:
     is process-randomized; md5 is not.
     """
     return int(hashlib.md5(name.encode()).hexdigest()[:8], 16)
+
+
+def snr_db(clean_u8: np.ndarray, distorted_u8: np.ndarray) -> float:
+    """SNR in dB: 10 · log10( mean(clean²) / mean((clean − distorted)²) ).
+
+    Identical inputs return `+inf`. Computation in float64.
+    """
+    clean = clean_u8.astype(np.float64)
+    err = clean - distorted_u8.astype(np.float64)
+    err_power = float((err ** 2).mean())
+    signal_power = float((clean ** 2).mean())
+    if err_power == 0.0:
+        return float("inf")
+    return 10.0 * float(np.log10(signal_power / err_power))

@@ -1,7 +1,9 @@
+import math
+
 import numpy as np
 import pytest
 
-from src.distortions import apply_haze, apply_jpeg, apply_noise, estimate_airlight, seed_for_tile
+from src.distortions import apply_haze, apply_jpeg, apply_noise, estimate_airlight, seed_for_tile, snr_db
 
 
 def test_estimate_airlight_returns_shape_3():
@@ -96,3 +98,18 @@ def test_seed_for_tile_is_deterministic_across_invocations():
     assert seed_for_tile("tile_0") != seed_for_tile("tile_1")
     # Within 32-bit range:
     assert 0 <= seed_for_tile("tile_0") < 2**32
+
+
+def test_snr_db_identical_inputs_is_infinite():
+    img = _make_textured_tile()
+    assert math.isinf(snr_db(img, img))
+
+
+def test_snr_db_noisier_means_lower_snr():
+    img = _make_textured_tile()
+    low = apply_noise(img, sigma_g=5.0, seed=0)
+    high = apply_noise(img, sigma_g=50.0, seed=0)
+    snr_low = snr_db(img, low)
+    snr_high = snr_db(img, high)
+    assert snr_low > snr_high  # less noise → higher SNR
+    assert math.isfinite(snr_low) and math.isfinite(snr_high)
