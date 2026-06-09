@@ -39,7 +39,7 @@ All performance reported **per class** and **per SNR**.
 |---|-----------|-----------|-------|--------------------------|--------|
 | 1 | Atmospheric haze | Scattering model `I = J·t + A·(1−t)` | β ∈ {0.5, 1.0, 1.5, 2.0, 2.5, 3.0} | [Dark Channel Prior](https://ieeexplore.ieee.org/document/5567108) dehazing | DCP + guided-filter soft matting |
 | 2 | JPEG compression | OpenCV `imencode/imdecode` at low quality | q ∈ {1, 3, 5, 10, 20, 40} | Bilateral on Y (YCrCb) | OpenCV `cv2.bilateralFilter` |
-| 3 | Sensor noise | Gaussian (σ_g) + Poisson shot | σ_g ∈ {5, 10, 15, 25, 35, 50} | NL-Means + bilateral pass | OpenCV `fastNlMeansDenoisingColored` + bilateral |
+| 3 | Sensor noise | Gaussian read (σ_g) + signal-dependent shot (std √I) | σ_g ∈ {5, 10, 15, 25, 35, 50} | NL-Means + bilateral pass | OpenCV `fastNlMeansDenoisingColored` + bilateral |
 
 ### Recovery — fine-tuning (Part 4)
 
