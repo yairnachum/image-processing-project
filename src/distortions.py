@@ -4,9 +4,6 @@ No file I/O — callers pass numpy arrays in and get numpy arrays out.
 Coordinates: HxWx3 uint8 RGB in, HxWx3 uint8 RGB out.
 """
 
-import hashlib
-
-import cv2
 import numpy as np
 
 

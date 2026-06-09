@@ -18,4 +18,4 @@ def test_estimate_airlight_picks_bright_region():
     img = np.zeros((100, 100, 3), dtype=np.uint8)
     img[10:20, 10:20] = (240, 245, 250)
     A = estimate_airlight(img, top_frac=0.01)  # top 1% = 100 pixels = the patch
-    assert A[0] > 200 and A[1] > 200 and A[2] > 200
+    assert A[0] >= 240 and A[1] >= 245 and A[2] >= 250
