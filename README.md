@@ -124,6 +124,34 @@ Edge GT is dilated AABB outlines from the YOLO labels — a proxy, not human-ann
 
 ORB's good-match ratio is **distorted vs clean** by construction; on the clean stage alone it is trivially 1.0. Real numbers land in Week 8 (distorted stage).
 
+## Week 7 — Distortions
+
+Materialized the test-split sweep for the three distortions chosen in Week 2.
+720 PNGs (40 tiles × 3 distortions × 6 levels), with one shared GT (clean labels).
+Per-image SNR (dB) is logged at synthesis time in
+[`results/distortion_manifest.csv`](results/distortion_manifest.csv).
+
+**Synthesis notes:**
+- **Haze:** literal scattering model `I = J·t + A·(1−t)` with `t = exp(-β)`
+  (constant depth `d=1`). Atmospheric light `A` is per-image — mean of the
+  brightest 0.1% pixels (Tang/He convention) — so the Week 9 enhancement (DCP)
+  reverses the same `A` it would estimate.
+- **JPEG:** OpenCV `imencode/imdecode` round-trip at each quality `q ∈ {1, 3, 5, 10, 20, 40}`.
+- **Noise:** Gaussian read noise (std `σ_g`) plus signal-dependent shot noise
+  (std `sqrt(intensity)`); seeded per-tile via md5 for cross-run determinism.
+
+Code: [`src/distortions.py`](src/distortions.py) · [`scripts/apply_distortions.py`](scripts/apply_distortions.py) · [`notebooks/02_distortions.ipynb`](notebooks/02_distortions.ipynb)
+
+### Distortion grids (clean + 3 sweep points)
+
+![Haze sweep](outputs/figures/distorted_grid_haze.png)
+![JPEG sweep](outputs/figures/distorted_grid_jpeg.png)
+![Noise sweep](outputs/figures/distorted_grid_noise.png)
+
+### SNR distribution
+
+![SNR histogram](outputs/figures/distorted_snr_hist.png)
+
 ## Repository layout (planned)
 
 ```
