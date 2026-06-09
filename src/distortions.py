@@ -4,6 +4,8 @@ No file I/O — callers pass numpy arrays in and get numpy arrays out.
 Coordinates: HxWx3 uint8 RGB in, HxWx3 uint8 RGB out.
 """
 
+import hashlib
+
 import cv2
 import numpy as np
 
@@ -44,3 +46,22 @@ def apply_jpeg(img_rgb_u8: np.ndarray, q: int) -> np.ndarray:
     if decoded_bgr is None:
         raise RuntimeError(f"cv2.imdecode failed at quality {q}")
     return cv2.cvtColor(decoded_bgr, cv2.COLOR_BGR2RGB)
+
+
+def apply_noise(img_rgb_u8: np.ndarray, sigma_g: float, seed: int) -> np.ndarray:
+    """Gaussian read noise (std `sigma_g`) + signal-dependent shot noise
+    (std `sqrt(intensity)`). `seed` makes the result deterministic.
+    """
+    rng = np.random.default_rng(seed)
+    J = img_rgb_u8.astype(np.float32)
+    gaussian = rng.standard_normal(J.shape).astype(np.float32) * float(sigma_g)
+    shot = rng.standard_normal(J.shape).astype(np.float32) * np.sqrt(np.maximum(J, 0.0))
+    out = J + gaussian + shot
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def seed_for_tile(name: str) -> int:
+    """Deterministic 32-bit seed from a tile name. Python's built-in `hash()`
+    is process-randomized; md5 is not.
+    """
+    return int(hashlib.md5(name.encode()).hexdigest()[:8], 16)

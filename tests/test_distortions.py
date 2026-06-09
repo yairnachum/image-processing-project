@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.distortions import apply_haze, apply_jpeg, estimate_airlight
+from src.distortions import apply_haze, apply_jpeg, apply_noise, estimate_airlight, seed_for_tile
 
 
 def test_estimate_airlight_returns_shape_3():
@@ -62,3 +62,37 @@ def test_apply_jpeg_q1_loses_more_than_q40():
     err_q1 = float(np.mean((img.astype(np.float32) - apply_jpeg(img, q=1).astype(np.float32)) ** 2))
     err_q40 = float(np.mean((img.astype(np.float32) - apply_jpeg(img, q=40).astype(np.float32)) ** 2))
     assert err_q1 > err_q40, f"q=1 should be lossier than q=40, got MSE {err_q1} vs {err_q40}"
+
+
+def test_apply_noise_deterministic_for_same_seed():
+    img = _make_textured_tile()
+    a = apply_noise(img, sigma_g=15.0, seed=123)
+    b = apply_noise(img, sigma_g=15.0, seed=123)
+    np.testing.assert_array_equal(a, b)
+
+
+def test_apply_noise_sigma_zero_is_only_shot_noise():
+    # sigma_g=0 → Gaussian term gone. Shot noise still present (sqrt(I) · N).
+    img = np.full((64, 64, 3), 100, dtype=np.uint8)
+    out = apply_noise(img, sigma_g=0.0, seed=1)
+    assert out.dtype == np.uint8
+    # Mean preserved within shot-noise SE (std ≈ sqrt(100)=10 per pixel,
+    # SE of mean over 64*64*3 ≈ 10/sqrt(12288) ≈ 0.09).
+    assert abs(out.mean() - 100) < 1.0
+    # Not the identity:
+    assert (out != 100).any()
+
+
+def test_apply_noise_higher_sigma_increases_error():
+    img = _make_textured_tile()
+    err5 = float(np.mean((img.astype(np.float32) - apply_noise(img, sigma_g=5.0, seed=2).astype(np.float32)) ** 2))
+    err50 = float(np.mean((img.astype(np.float32) - apply_noise(img, sigma_g=50.0, seed=2).astype(np.float32)) ** 2))
+    assert err50 > err5
+
+
+def test_seed_for_tile_is_deterministic_across_invocations():
+    # The built-in hash() is process-randomized; ours is not.
+    assert seed_for_tile("tile_0") == seed_for_tile("tile_0")
+    assert seed_for_tile("tile_0") != seed_for_tile("tile_1")
+    # Within 32-bit range:
+    assert 0 <= seed_for_tile("tile_0") < 2**32
