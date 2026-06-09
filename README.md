@@ -183,14 +183,21 @@ to study. Headline drops:
 | JPEG | q = 40 → q = 1     | **0.687 → 0.166** (4.1× drop) |
 | Noise| σ = 5 → σ = 50     | **0.489 → 0.112** (4.4× drop) |
 
-At equal SNR, noise actually preserves more mAP than JPEG: at SNR ≈ 14 dB,
-noise (σ=15) holds 0.378 while JPEG (q=3) collapses to 0.176. JPEG quantises
-the high-frequency descriptor structure that the OBB model relies on for
-small-vehicle and ship class discrimination; additive noise leaves enough of
-that structure intact for the network to recover. Haze at β = 0.5 (SNR ≈ +3
-dB) is essentially indistinguishable from clean — the per-image atmospheric
-light estimate is close to the image mean for that level, so the multiplicative
-attenuation is barely perceptible.
+**At equal SNR, noise preserves more mAP than JPEG.** At SNR ≈ 14 dB, noise
+(σ=15) holds 0.378 while JPEG (q=3) collapses to 0.176 — a ~2× gap from the
+same SNR budget. We didn't isolate the cause but the plausible reading is that
+JPEG's blocky low-pass artefacts interact with the OBB regressor in a way that
+random additive noise does not. Haze at β=0.5 (SNR ≈ +3 dB) is essentially
+indistinguishable from clean — the per-image atmospheric light estimate is
+close to the image mean for that level, so the multiplicative attenuation is
+barely perceptible. The β=0.5 sweep point is too mild to be a useful
+degradation sample; the meaningful haze range is β ∈ {1.0, 1.5, 2.0, 2.5, 3.0}.
+
+**Known weakness: swimming-pool (AP=0.18) is genuinely under-recalled** — 64
+GT instances across the 40 tiles but only 14 predictions, and 11 of those 14
+came from a single tile. Either the GT counts small pools the model trained
+only on large ones, or the centroid-cropped 1024×1024 tiles clip pools at the
+edge. Reported as a real model weakness, not a pipeline bug.
 
 ### HED ODS F-score vs SNR
 
