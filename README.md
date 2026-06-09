@@ -152,6 +152,58 @@ Code: [`src/distortions.py`](src/distortions.py) · [`scripts/apply_distortions.
 
 ![SNR histogram](outputs/figures/distorted_snr_hist.png)
 
+## Week 8 — Distorted stage (degradation)
+
+Ran YOLOv8s + HED + ORB on every (distortion, level) combo from Week 7 —
+**18 combos × 40 tiles = 720 evaluations per task**. Per-class mAP@0.5 and
+per-image HED ODS F-score are measured against the (unchanged) clean GT;
+ORB's "good-match ratio" is **distorted vs clean** matched via BFMatcher
+(Hamming) + Lowe ratio (this is the first stage where ORB produces non-trivial
+numbers). Per-combo CSVs land under
+[`results/distorted/{d}/{l}/`](results/distorted/), with sweep aggregates in
+[`results/distortion_sweep/`](results/distortion_sweep/).
+
+Code: [`scripts/eval_distorted.py`](scripts/eval_distorted.py) ·
+[`src/orb_match.py`](src/orb_match.py) ·
+[`notebooks/03_distorted_stage.ipynb`](notebooks/03_distorted_stage.ipynb)
+
+### mAP@0.5 vs SNR
+
+![mAP@0.5 vs SNR](outputs/figures/distorted_curve_map_vs_snr.png)
+
+Floors at ~0 across all combos. COCO-pretrained YOLOv8s never recognised the
+DOTA aerial classes (W6 clean baseline was also 0.000), so distortion has
+nothing left to break. The Week 10 fine-tuning step is what should lift these
+curves off the floor.
+
+### HED ODS F-score vs SNR
+
+![Edge F-score vs SNR](outputs/figures/distorted_curve_edgeF_vs_snr.png)
+
+**Haze hurts edges; JPEG and noise barely move them.** Haze drops F-score from
+0.176 (β=0.5) to 0.062 (β=3.0). JPEG and noise stay within ±0.02 of the
+clean baseline (0.175) across their full sweeps — HED's training on
+high-frequency natural images makes it robust to both compression artefacts
+and additive noise, while haze's low-frequency attenuation kills the very
+gradient structure HED relies on.
+
+### ORB good-match ratio vs SNR
+
+![ORB good-match ratio vs SNR](outputs/figures/distorted_curve_orb_vs_snr.png)
+
+**ORB is the most discriminating signal.** Three distinct degradation shapes:
+
+| Distortion | Behaviour |
+|---|---|
+| Haze | Cliff at β ≈ 2.5: ratio drops from 0.94 → 0.67 across β ∈ {0.5, 2.0}, then collapses to ~0 at β ∈ {2.5, 3.0} where `t = exp(-β)` is small enough that the image is dominated by `A`. |
+| JPEG | Smooth monotonic decay: 0.81 → 0.18 across q ∈ {40, 1}. JPEG quantisation kills high-frequency descriptor structure, so the Lowe-ratio test rejects most matches at low q. |
+| Noise | Smooth monotonic decay, gentler than JPEG: 0.80 → 0.37 across σ ∈ {5, 50}. Shot noise blurs descriptors but doesn't wipe them out; the matcher still finds many true correspondences even at σ=50. |
+
+These three curves are the headline finding of the baseline phase: **at the
+same SNR, the same distortion family hurts different algorithms by very
+different amounts**, which is exactly the robustness question this project
+exists to study.
+
 ## Repository layout (planned)
 
 ```
