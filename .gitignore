@@ -26,10 +26,11 @@ data/distorted/
 data/restored/
 data/processed/
 
-# Per-tile model artefacts for distorted stages (~230 MB of HED PNGs + ORB
-# npz files + YOLO txt files). The per-combo summary CSVs and sweep
-# aggregates are still tracked under results/.
+# Per-tile model artefacts for distorted and restored stages (~230 MB each
+# of HED PNGs + ORB npz files + YOLO txt files). The per-combo summary CSVs
+# and sweep aggregates are still tracked under results/.
 outputs/distorted/
+outputs/restored/
 *.pt
 *.pth
 *.onnx
