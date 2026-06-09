@@ -113,3 +113,19 @@ def test_snr_db_noisier_means_lower_snr():
     snr_high = snr_db(img, high)
     assert snr_low > snr_high  # less noise → higher SNR
     assert math.isfinite(snr_low) and math.isfinite(snr_high)
+
+
+from scripts.apply_distortions import _format_level
+
+
+@pytest.mark.parametrize("distortion,level,expected", [
+    ("haze", 0.5, "0.5"),
+    ("haze", 1.0, "1.0"),
+    ("haze", 3.0, "3.0"),
+    ("jpeg", 1, "1"),
+    ("jpeg", 40, "40"),
+    ("noise", 5, "5"),
+    ("noise", 50, "50"),
+])
+def test_format_level_matches_folder_convention(distortion, level, expected):
+    assert _format_level(distortion, level) == expected

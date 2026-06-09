@@ -81,3 +81,24 @@ def test_cli_force_rewrites(tiny_clean_split: Path, tmp_path: Path):
     assert _run_cli(tiny_clean_split, out_root, manifest, extra=("--force",)).returncode == 0
     for p, first in first_mtimes.items():
         assert p.stat().st_mtime_ns > first, f"--force did not rewrite {p}"
+
+
+def test_manifest_snr_matches_recomputed_snr(tiny_clean_split: Path, tmp_path: Path):
+    """The stored SNR in the manifest should equal a fresh snr_db call on
+    the loaded clean and distorted PNGs (PNG is lossless, so exact equality)."""
+    import cv2
+    from src.distortions import snr_db
+
+    out_root = tmp_path / "data" / "distorted"
+    manifest = tmp_path / "manifest.csv"
+    assert _run_cli(tiny_clean_split, out_root, manifest).returncode == 0
+
+    df = pd.read_csv(manifest)
+    # Spot-check one row per distortion.
+    spot = df.groupby("distortion").head(1)
+    assert len(spot) == 3
+    for _, row in spot.iterrows():
+        clean = cv2.cvtColor(cv2.imread(row["clean_path"]), cv2.COLOR_BGR2RGB)
+        dist  = cv2.cvtColor(cv2.imread(row["distorted_path"]), cv2.COLOR_BGR2RGB)
+        recomputed = snr_db(clean, dist)
+        assert abs(recomputed - float(row["snr_db"])) < 1e-6

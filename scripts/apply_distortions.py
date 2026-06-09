@@ -27,10 +27,7 @@ from src.distortions import (
     seed_for_tile,
     snr_db,
 )
-
-HAZE_LEVELS = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
-JPEG_LEVELS = [1, 3, 5, 10, 20, 40]
-NOISE_LEVELS = [5, 10, 15, 25, 35, 50]
+from src.config import HAZE_LEVELS, JPEG_LEVELS, NOISE_LEVELS
 
 
 def _format_level(distortion: str, lvl) -> str:
@@ -74,6 +71,13 @@ def main() -> int:
     parser.add_argument("--force", action="store_true",
                         help="Re-write distorted PNGs even if they exist.")
     args = parser.parse_args()
+
+    # Path convention: clean_path and distorted_path in the manifest are
+    # written as the *string form* of whatever Path the CLI received. If the
+    # caller passes `--clean-root data/clean` (relative), manifest paths are
+    # relative-to-cwd; if they pass an absolute path, manifest paths are
+    # absolute. Downstream W8+ readers should either run from the repo root,
+    # or wrap with Path(repo_root) / row["clean_path"].
 
     clean_imgs = sorted((args.clean_root / "test" / "images").glob("*.png"))
     if not clean_imgs:

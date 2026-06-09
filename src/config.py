@@ -31,3 +31,9 @@ HED_REPO = "lllyasviel/Annotators"
 # --- ORB ---
 ORB_N_FEATURES = 1000
 ORB_N_LEVELS   = 8
+
+# Distortion sweep levels (W7+). Centralized here so the apply_distortions
+# CLI and the W8 eval driver share one source of truth.
+HAZE_LEVELS = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+JPEG_LEVELS = [1, 3, 5, 10, 20, 40]
+NOISE_LEVELS = [5, 10, 15, 25, 35, 50]
