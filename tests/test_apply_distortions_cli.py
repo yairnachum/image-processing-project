@@ -60,15 +60,24 @@ def test_cli_is_idempotent_without_force(tiny_clean_split: Path, tmp_path: Path)
     assert _run_cli(tiny_clean_split, out_root, manifest).returncode == 0
     second_mtime = (out_root / "haze" / "0.5" / "test" / "images" / "tile_0.png").stat().st_mtime_ns
     assert second_mtime == first_mtime
+    # Manifest must still be produced on the idempotent run — a regression
+    # that skipped the manifest write on cache-hit paths would otherwise pass.
+    df = pd.read_csv(manifest)
+    assert len(df) == 36
+    assert {"name", "distortion", "level", "snr_db"} <= set(df.columns)
 
 
 def test_cli_force_rewrites(tiny_clean_split: Path, tmp_path: Path):
     out_root = tmp_path / "data" / "distorted"
     manifest = tmp_path / "manifest.csv"
     assert _run_cli(tiny_clean_split, out_root, manifest).returncode == 0
-    first_mtime = (out_root / "haze" / "0.5" / "test" / "images" / "tile_0.png").stat().st_mtime_ns
+    # Snapshot all 36 mtimes so we can verify --force advances every single
+    # one, not just the spot-checked tile.
+    pngs = sorted(out_root.rglob("*.png"))
+    assert len(pngs) == 36
+    first_mtimes = {p: p.stat().st_mtime_ns for p in pngs}
     import time
     time.sleep(0.01)
     assert _run_cli(tiny_clean_split, out_root, manifest, extra=("--force",)).returncode == 0
-    second_mtime = (out_root / "haze" / "0.5" / "test" / "images" / "tile_0.png").stat().st_mtime_ns
-    assert second_mtime > first_mtime
+    for p, first in first_mtimes.items():
+        assert p.stat().st_mtime_ns > first, f"--force did not rewrite {p}"
