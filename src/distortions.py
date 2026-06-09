@@ -70,7 +70,10 @@ def seed_for_tile(name: str) -> int:
 def snr_db(clean_u8: np.ndarray, distorted_u8: np.ndarray) -> float:
     """SNR in dB: 10 · log10( mean(clean²) / mean((clean − distorted)²) ).
 
-    Identical inputs return `+inf`. Computation in float64.
+    Identical inputs return `+inf`. An all-zero clean image with any nonzero
+    error yields `-inf` (with a numpy RuntimeWarning) — not a concern for real
+    aerial tiles but worth knowing if reused on padded/black inputs.
+    Computation in float64.
     """
     clean = clean_u8.astype(np.float64)
     err = clean - distorted_u8.astype(np.float64)
