@@ -65,6 +65,9 @@ def main() -> int:
                         help="Comma-separated combos to run, e.g. 'haze:0.5,jpeg:10'. Default: all 18.")
     parser.add_argument("--force", action="store_true",
                         help="Re-run models even if per-combo run_stage outputs already exist.")
+    parser.add_argument("--tasks", type=str, default=None,
+                        help="Comma-separated subset of {detections,edges,orb} to run via run_stage. "
+                             "Default: all three. Lets you re-run just YOLO without re-running HED.")
     args = parser.parse_args()
 
     manifest = pd.read_csv(args.manifest, dtype={"level": str})
@@ -88,14 +91,19 @@ def main() -> int:
             combo_rows["snr_db"].replace([np.inf, -np.inf], np.nan).mean()
         )
 
-        # 1. Run models (idempotent: skip if results CSV already there)
+        # 1. Run models (idempotent: skip if results CSV already there).
+        # When --tasks is set we always re-run the requested subset, regardless
+        # of which per-combo CSVs already exist — that's the point of the flag.
         per_combo_results = args.results_root / stage
-        if args.force or not (per_combo_results / "detections.csv").exists():
+        tasks_list = tuple(t.strip() for t in args.tasks.split(",")) if args.tasks else None
+        should_run = args.force or args.tasks is not None or not (per_combo_results / "detections.csv").exists()
+        if should_run:
             run_stage(
                 stage=stage,
                 image_dir=image_dir,
                 results_root=args.results_root,
                 outputs_root=args.outputs_root,
+                tasks=tasks_list,
             )
 
         # 2. Measure (always re-runs — cheap)

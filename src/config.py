@@ -21,7 +21,12 @@ N_TRAIN   = 160
 TILE_SIZE = 1024
 
 # --- YOLOv8 ---
-YOLO_WEIGHTS = "yolov8s.pt"   # Ultralytics auto-downloads
+# We use the DOTA-OBB-pretrained variant (Ultralytics) so the baseline
+# detects real DOTA classes out of the box. The Detector wrapper converts
+# the OBB output to AABB (r.obb.xyxy) so the rest of the pipeline (YOLO
+# AABB labels, IoU, mAP) stays unchanged. Class IDs 0–14 are identical to
+# our DOTA_CLASSES list.
+YOLO_WEIGHTS = "yolov8s-obb.pt"   # Ultralytics auto-downloads (DOTA-v1.0 pretrained)
 YOLO_CONF    = 0.25
 YOLO_IOU_NMS = 0.45
 

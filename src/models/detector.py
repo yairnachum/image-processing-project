@@ -27,7 +27,13 @@ class Detector:
             verbose=False,
         )[0]
 
-        if r.boxes is None or len(r.boxes) == 0:
+        # OBB models (yolov8s-obb) put detections in r.obb; standard models
+        # use r.boxes. Pick whichever is populated. We always emit AABB
+        # boxes_xyxy — for OBB, r.obb.xyxy is the axis-aligned bbox of the
+        # rotated rectangle, which is exactly what our YOLO-format ground
+        # truth and mAP pipeline expect.
+        det = r.obb if getattr(r, "obb", None) is not None else r.boxes
+        if det is None or len(det) == 0:
             return {
                 "boxes_xyxy": np.zeros((0, 4), dtype=np.float32),
                 "classes":    np.zeros((0,),  dtype=np.int32),
@@ -35,9 +41,9 @@ class Detector:
             }
 
         return {
-            "boxes_xyxy": r.boxes.xyxy.cpu().numpy().astype(np.float32),
-            "classes":    r.boxes.cls.cpu().numpy().astype(np.int32),
-            "scores":     r.boxes.conf.cpu().numpy().astype(np.float32),
+            "boxes_xyxy": det.xyxy.cpu().numpy().astype(np.float32),
+            "classes":    det.cls.cpu().numpy().astype(np.int32),
+            "scores":     det.conf.cpu().numpy().astype(np.float32),
         }
 
     def train(self, data_yaml: Path, **kwargs) -> Path:

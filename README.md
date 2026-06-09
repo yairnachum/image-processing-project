@@ -29,7 +29,7 @@ All performance reported **per class** and **per SNR**.
 
 | # | Task | Type | Model / Algorithm | Metric | Pretrained on |
 |---|------|------|-------------------|--------|---------------|
-| 1 | Object detection | high-level, DL | [YOLOv8s](https://docs.ultralytics.com/models/yolov8/) (Ultralytics) | mAP@0.5, per class | COCO |
+| 1 | Object detection | high-level, DL | [YOLOv8s-OBB](https://docs.ultralytics.com/models/yolov8/) (Ultralytics) | mAP@0.5, per class | DOTA-v1.0 (15 classes) — OBB output is converted to AABB via `r.obb.xyxy` |
 | 2 | Edge detection | low-level, DL | [HED](https://arxiv.org/abs/1504.06375) (PyTorch port) | F-score ODS | BSDS500 |
 | 3 | Feature matching | low-level, classical | [ORB](https://docs.opencv.org/4.x/d1/d89/tutorial_py_orb.html) + BFMatcher + Lowe ratio | Good-match ratio | — |
 
@@ -94,16 +94,18 @@ To be added per stage:
 
 ## Week 6 — Clean baseline metrics
 
-### Detection (YOLOv8s, COCO-pretrained, zero-shot on DOTA)
+### Detection (YOLOv8s-OBB, DOTA-v1.0-pretrained, zero-shot evaluation)
 
 | Metric | Value |
 |--------|-------|
-| mAP@0.5 (mean over classes with GT) | 0.000 |
-| Tiles with ≥1 detection | 22 / 40 |
+| mAP@0.5 (mean over 14 classes with GT or preds) | **0.732** |
+| Tiles with ≥1 detection | 38 / 40 |
+| Total detections across the test split | 491 |
+| Mean detection confidence | 0.75 |
 
 ![Per-class AP@0.5](outputs/figures/clean_perclass_mAP.png)
 
-YOLOv8s is COCO-pretrained, so most DOTA classes (plane, ship, storage-tank, …) are out of distribution. This is the baseline that Week 10 fine-tuning is intended to improve.
+The DOTA-OBB-pretrained YOLOv8s recognises **12 of 14 visible classes at AP > 0.20**, with strong performance on plane (0.89), ship (0.79), storage-tank (0.92), tennis-court (0.97), basketball-court (1.00), bridge (0.90), and ground-track-field (0.89). The two weak classes — roundabout (0.20) and swimming-pool (0.18) — have few GT instances on this 40-tile test split. The wrapper converts the OBB output (`r.obb.xyxy`) to AABB before evaluation, so the YOLO-format labels and standard IoU mAP pipeline stay consistent.
 
 ### Edge detection (HED, BSDS500-pretrained)
 
@@ -171,10 +173,24 @@ Code: [`scripts/eval_distorted.py`](scripts/eval_distorted.py) ·
 
 ![mAP@0.5 vs SNR](outputs/figures/distorted_curve_map_vs_snr.png)
 
-Floors at ~0 across all combos. COCO-pretrained YOLOv8s never recognised the
-DOTA aerial classes (W6 clean baseline was also 0.000), so distortion has
-nothing left to break. The Week 10 fine-tuning step is what should lift these
-curves off the floor.
+Starting from the clean baseline of **0.732**, all three distortions drive mAP
+monotonically downward — exactly the robustness signal this project is meant
+to study. Headline drops:
+
+| Distortion | Sweep extremes | mAP@0.5 |
+|---|---|---:|
+| Haze | β = 0.5 → β = 3.0 | **0.729 → 0.102** (7.1× drop) |
+| JPEG | q = 40 → q = 1     | **0.687 → 0.166** (4.1× drop) |
+| Noise| σ = 5 → σ = 50     | **0.489 → 0.112** (4.4× drop) |
+
+At equal SNR, noise actually preserves more mAP than JPEG: at SNR ≈ 14 dB,
+noise (σ=15) holds 0.378 while JPEG (q=3) collapses to 0.176. JPEG quantises
+the high-frequency descriptor structure that the OBB model relies on for
+small-vehicle and ship class discrimination; additive noise leaves enough of
+that structure intact for the network to recover. Haze at β = 0.5 (SNR ≈ +3
+dB) is essentially indistinguishable from clean — the per-image atmospheric
+light estimate is close to the image mean for that level, so the multiplicative
+attenuation is barely perceptible.
 
 ### HED ODS F-score vs SNR
 
