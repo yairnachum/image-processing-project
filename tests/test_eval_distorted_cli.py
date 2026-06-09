@@ -104,5 +104,5 @@ def test_eval_distorted_cli_runs_one_combo(tiny_distorted_layout):
 
     om = pd.read_csv(sweep_dir / "orb_match.csv")
     assert len(om) == 2
-    assert {"name", "snr_db", "n_clean_kp", "n_dist_kp", "n_good",
+    assert {"name", "snr_db", "n_clean_kp", "n_stage_kp", "n_good",
             "good_ratio", "distortion", "level", "level_numeric", "snr_db_mean"} <= set(om.columns)
