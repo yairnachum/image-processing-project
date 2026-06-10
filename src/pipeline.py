@@ -38,6 +38,7 @@ def run_stage(
     results_root: Path,
     outputs_root: Path,
     tasks: Optional[Iterable[str]] = None,
+    weights: Optional[str] = None,
 ) -> None:
     """Run the chosen `tasks` on every `*.png` in `image_dir`.
 
@@ -48,6 +49,9 @@ def run_stage(
     `tasks` defaults to ("detections", "edges", "orb"). Models are loaded only
     for the tasks requested, which lets distortion sweeps skip the heavy ones
     when prototyping.
+
+    `weights` overrides the detector checkpoint; None uses config.YOLO_WEIGHTS
+    (the baseline). Used by the Week-11 fine-tuned sweep to load each specialist.
     """
     tasks = tuple(tasks) if tasks is not None else ALL_TASKS
     unknown = set(tasks) - set(ALL_TASKS)
@@ -58,7 +62,7 @@ def run_stage(
     if not tiles:
         raise FileNotFoundError(f"No tiles found in {image_dir}")
 
-    detector = Detector() if "detections" in tasks else None
+    detector = Detector(weights=weights) if "detections" in tasks else None
     hed = HED() if "edges" in tasks else None
     orb = ORB() if "orb" in tasks else None
 
