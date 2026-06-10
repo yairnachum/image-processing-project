@@ -287,6 +287,58 @@ already robust to both distortions in Week 8, so there is little to recover.
 The takeaway mirrors Week 8: *one enhancement does not lift every algorithm
 equally*, which is exactly the robustness trade-off this project studies.
 
+## Week 10 — Fine-tuning (distortion specialists)
+
+Fine-tuned **three `yolov8s-obb` specialists** — one per distortion family —
+starting from the DOTA-pretrained baseline and adapting each to its distortion.
+The goal is robustness: a model that has *seen* the degradation during training
+should detect through it better than the pretrained baseline (the head-to-head
+test is Week 11).
+
+**Data** ([`scripts/build_finetune_data.py`](scripts/build_finetune_data.py)):
+the 160-tile train subset is re-split 128/32 train/val (the 40-tile **test split
+is never touched**), and each tile is distorted at **all 6 severity levels** of
+its family — 768 train + 192 val tiles per specialist. Oriented labels are
+regenerated from the raw DOTA annotations via
+[`write_yolo_obb_label`](src/dota_utils.py) (the AABB labels used for evaluation
+can't train an OBB head). Layout mirrors the distorted stage:
+`data/finetune/{family}/{train,val}/{images,labels}/` + a `task: obb` data yaml.
+
+**Training** ([`scripts/finetune.py`](scripts/finetune.py)): `yolov8s-obb.pt`
+fine-tuned per family at 640 px, 10 epochs, batch 4 (MPS). Checkpoints land in
+`weights/finetuned_{family}.pt` (local — `*.pt` is gitignored like all model
+files); training curves + `results.csv` are tracked under
+[`results/finetune/`](results/finetune/).
+
+### Training-set adaptation (Ultralytics val mAP, per family's distorted val split)
+
+| Specialist | val mAP@0.5 | val mAP@0.5:0.95 |
+|---|---:|---:|
+| haze  | 0.809 | 0.613 |
+| jpeg  | 0.704 | 0.529 |
+| noise | 0.833 | 0.653 |
+
+![haze training](results/finetune/haze/results.png)
+![jpeg training](results/finetune/jpeg/results.png)
+![noise training](results/finetune/noise/results.png)
+
+The ranking makes sense: **noise** is easiest to learn robustness to (the model
+learns to ignore high-frequency grain), **jpeg** is hardest because its val
+split includes q=1 where real structure is destroyed, and **haze** sits between
+(light/medium haze is recoverable, β=3.0 loses contrast). Each number averages
+across all six severity levels — including the worst — so 0.70–0.83 is strong
+evidence the specialists genuinely adapted to their distortion.
+
+> **Important — these are not the comparison yet.** The table above is
+> Ultralytics' *internal validation* metric (oriented-IoU OBB mAP on the
+> held-out distorted val tiles), computed during training. It is **not**
+> directly comparable to the clean baseline `mAP 0.732` from Weeks 8–9, which
+> uses a different metric (AABB + VOC all-points AP) on a different image set
+> (the 40 clean test tiles). Proving *"fine-tuning beats the pretrained baseline
+> under distortion"* requires running **both** models through the same Week 8/9
+> evaluation pipeline on the distorted **test** sweep, per severity level —
+> that apples-to-apples comparison is **Week 11**.
+
 ## Repository layout (planned)
 
 ```
