@@ -246,6 +246,28 @@ def write_yolo_label(
     out_path.write_text("\n".join(lines))
 
 
+def write_yolo_obb_label(
+    annotations: List[Annotation],
+    out_path: Path,
+    img_w: int,
+    img_h: int,
+) -> None:
+    """Write DOTA-OBB YOLO labels: `cls x1 y1 x2 y2 x3 y3 x4 y4` (normalized)."""
+    lines = []
+    for ann in annotations:
+        if ann.category not in DOTA_CLASSES:
+            continue
+        cls = DOTA_CLASSES.index(ann.category)
+        pts = np.asarray(ann.points, dtype=np.float32).reshape(-1, 2)
+        norm = []
+        for x, y in pts:
+            nx = min(max(x / img_w, 0.0), 1.0)
+            ny = min(max(y / img_h, 0.0), 1.0)
+            norm.extend([f"{nx:.6f}", f"{ny:.6f}"])
+        lines.append(f"{cls} " + " ".join(norm))
+    out_path.write_text("\n".join(lines))
+
+
 def materialize_split(
     samples: List[Sample],
     out_root: Path,
