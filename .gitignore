@@ -24,7 +24,9 @@ data/raw/
 data/clean/
 data/distorted/
 data/restored/
+data/finetune/
 data/processed/
+weights/
 
 # Per-tile model artefacts for distorted and restored stages (~230 MB each
 # of HED PNGs + ORB npz files + YOLO txt files). The per-combo summary CSVs

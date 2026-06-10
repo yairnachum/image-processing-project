@@ -42,3 +42,11 @@ ORB_N_LEVELS   = 8
 HAZE_LEVELS = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
 JPEG_LEVELS = [1, 3, 5, 10, 20, 40]
 NOISE_LEVELS = [5, 10, 15, 25, 35, 50]
+
+# Week 10 — fine-tuning. yolov8s-obb specialists trained on distorted tiles.
+FINETUNE_ROOT        = DATA_ROOT / "finetune"
+FINETUNE_WEIGHTS_DIR = PROJECT_ROOT / "weights"
+FINETUNE_N_TRAIN     = 128   # of the 160 train tiles; remaining 32 → val
+FINETUNE_EPOCHS      = 50
+FINETUNE_BATCH       = 4
+FINETUNE_IMGSZ       = 1024
