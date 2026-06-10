@@ -24,7 +24,6 @@ def test_builder_writes_tiles_and_yaml(tmp_path, monkeypatch):
     out = tmp_path / "finetune"
     rc = b.main([
         "--distortion", "haze",
-        "--clean-root", str(tmp_path),
         "--out-root", str(out),
         "--levels", "0.5", "1.0",
         "--n-train", "1",
@@ -35,6 +34,7 @@ def test_builder_writes_tiles_and_yaml(tmp_path, monkeypatch):
     assert len(list((fam / "train" / "images").glob("*.png"))) == 2
     assert len(list((fam / "train" / "labels").glob("*.txt"))) == 2
     assert len(list((fam / "val" / "images").glob("*.png"))) == 2
+    assert len(list((fam / "val" / "labels").glob("*.txt"))) == 2
     yaml_text = (fam / "dota_obb.yaml").read_text()
     assert "task: obb" in yaml_text
     assert "names:" in yaml_text

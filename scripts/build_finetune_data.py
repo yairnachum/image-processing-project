@@ -6,7 +6,7 @@ labels + a per-family `task: obb` data yaml. The 40-tile test split is never
 touched.
 
     python -m scripts.build_finetune_data --distortion all \\
-        --clean-root data/clean --out-root data/finetune
+        --raw-root data/raw/DOTA --out-root data/finetune
 """
 
 import argparse
@@ -81,7 +81,6 @@ def _build_family(distortion, levels, samples, n_train, out_root, force, tile_si
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--distortion", choices=["haze", "jpeg", "noise", "all"], default="all")
-    p.add_argument("--clean-root", type=Path, default=DATA_ROOT / "clean")
     p.add_argument("--raw-root", type=Path, default=DATA_ROOT / "raw" / "DOTA")
     p.add_argument("--out-root", type=Path, required=True)
     p.add_argument("--levels", nargs="*", default=None,
@@ -93,9 +92,10 @@ def main(argv=None) -> int:
     samples = reproduce_source_train(args.raw_root)
     families = ["haze", "jpeg", "noise"] if args.distortion == "all" else [args.distortion]
     for fam in families:
-        levels = args.levels if args.levels is not None else FAMILY_LEVELS[fam]
-        if args.levels is not None:
-            levels = [float(x) if fam != "jpeg" else int(float(x)) for x in levels]
+        if args.levels is None:
+            levels = FAMILY_LEVELS[fam]
+        else:
+            levels = [int(float(x)) if fam == "jpeg" else float(x) for x in args.levels]
         _build_family(fam, levels, samples, args.n_train, args.out_root, args.force)
     return 0
 
