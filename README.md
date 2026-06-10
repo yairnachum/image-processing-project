@@ -1,23 +1,46 @@
 # Image Processing / Vision Course Project
 
-Evaluating the **robustness** of image processing and vision algorithms under image distortions, and the effect of two recovery strategies: classical image enhancement (pre-processing) and model fine-tuning.
+We test how three computer-vision tasks — OBB object detection (YOLOv8s-OBB),
+edge detection (HED), and ORB feature matching — degrade under three image
+distortions (haze, JPEG compression, additive sensor noise) across a range of
+intensities, and which recovery strategy wins: **enhancing the image**
+(classical restoration) versus **adapting the model** (fine-tuning on distorted
+data). Every stage is measured against ground truth on a frozen subset of the
+DOTA-v1.0 aerial dataset, reported **per class** and **per SNR**.
 
 ## Team
 
 _To be filled in (names + emails)._
 
-## Project structure
+## Executive Summary
 
-For each chosen task on the chosen dataset, we will produce four measurements:
+**The question.** When a vision model meets a degraded image, do you fix the
+image or fix the model?
 
-1. **Baseline** — performance on clean images (vs. ground truth where available; otherwise used as pseudo-GT for later stages).
-2. **Distorted** — performance on images degraded by 3 distortions, swept across intensities and reported per SNR.
-3. **Enhanced (restored)** — performance after applying classical enhancement methods on the distorted images.
-4. **Fine-tuned** — performance of a DL model fine-tuned on distorted images.
+**The answer — it depends on the distortion** (mean mAP@0.5 over the 6 severity
+levels per family; clean baseline = **0.732**):
 
-All performance reported **per class** and **per SNR**.
+- **Haze → enhance the image.** Dark-channel-prior dehazing (**0.666**) beats the
+  fine-tuned specialist (**0.512**): a physics prior that inverts the haze
+  formation model recovers contrast the detector can only partly learn to see
+  through.
+- **Noise → adapt the model.** The fine-tuned specialist (**0.502**) decisively
+  beats denoising (**0.352**), which erased fine detail along with the grain.
+- **JPEG → a tie.** Fine-tuning (**0.435**) and restoration (**0.406**) track
+  closely across the SNR range; neither dominates.
 
-## Decisions
+![Recovery overview](outputs/figures/recovery_overview_hero.png)
+
+*Distorted vs. restored vs. fine-tuned mAP@0.5 against SNR, one panel per
+distortion. The crossover — restoration (green) wins haze, fine-tuning (blue)
+wins noise, the two converge on JPEG — is this project's headline result.*
+
+The study runs in four measurement stages, each evaluated against the same
+ground truth: **clean baseline** → **distorted** (3 distortions × 6 levels) →
+**restored** (one classical enhancement per distortion) → **fine-tuned** (a
+distortion specialist per family). The sections below follow that spine.
+
+## Setup
 
 ### Dataset
 
@@ -25,7 +48,28 @@ All performance reported **per class** and **per SNR**.
 |--------|------|-----|
 | **DOTA v1.0** (Dataset for Object Detection in Aerial Images) | <https://captain-whu.github.io/DOTA/dataset.html> | Aerial imagery with high-quality bounding-box GT for 15 categories. Distortions like haze, compression, and sensor noise tell a strong real-world story (atmospheric scattering, downlink bandwidth, low-light shadows). Manageable size — we use a 200-tile (1024×1024) subset, 160 train / 40 test, frozen with `random.seed(7)`. |
 
-### Tasks (3, at least one DL + low-level / high-level mix)
+200 tiles (1024×1024) are drawn from DOTA v1.0 train + val splits, frozen with
+`random.seed(7)`: **160 train** / **40 test**. The 40-tile test split is the
+evaluation set for every stage and is never touched by fine-tuning.
+
+Code: [`scripts/download_dota.py`](scripts/download_dota.py) · [`src/dota_utils.py`](src/dota_utils.py) · [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb)
+
+**Sample annotated tiles (4×4 grid)**
+
+<!-- Run notebooks/01_eda.ipynb to generate this image -->
+![Sample grid with OBB annotations](outputs/sample_grid.png)
+
+**Class distribution**
+
+![Class distribution](outputs/class_distribution.png)
+
+**Annotations-per-tile distribution**
+
+![Annotations per tile](outputs/ann_per_tile.png)
+
+### Tasks & metrics
+
+Three tasks spanning a low-level / high-level mix, at least one a DL model:
 
 | # | Task | Type | Model / Algorithm | Metric | Pretrained on |
 |---|------|------|-------------------|--------|---------------|
@@ -33,7 +77,9 @@ All performance reported **per class** and **per SNR**.
 | 2 | Edge detection | low-level, DL | [HED](https://arxiv.org/abs/1504.06375) (PyTorch port) | F-score ODS | BSDS500 |
 | 3 | Feature matching | low-level, classical | [ORB](https://docs.opencv.org/4.x/d1/d89/tutorial_py_orb.html) + BFMatcher + Lowe ratio | Good-match ratio | — |
 
-### Distortions (3) and enhancements (per distortion)
+### Distortions & enhancements
+
+Three distortions, each paired with one matched classical enhancement:
 
 | # | Distortion | Synthesis | Sweep | Enhancement (classical) | Method |
 |---|-----------|-----------|-------|--------------------------|--------|
@@ -41,60 +87,27 @@ All performance reported **per class** and **per SNR**.
 | 2 | JPEG compression | OpenCV `imencode/imdecode` at low quality | q ∈ {1, 3, 5, 10, 20, 40} | Bilateral on Y (YCrCb) | OpenCV `cv2.bilateralFilter` |
 | 3 | Sensor noise | Gaussian read (σ_g) + signal-dependent shot (std √I) | σ_g ∈ {5, 10, 15, 25, 35, 50} | NL-Means + bilateral pass | OpenCV `fastNlMeansDenoisingColored` + bilateral |
 
-### Recovery — fine-tuning (Part 4)
-
-| Target | Strategy | Notes |
-|--------|---------|-------|
-| YOLOv8s, one model per distortion | On-the-fly distortion in the dataloader (albumentations), random intensity per epoch from the same 6-level range | 3 fine-tuned checkpoints: `yolo-haze.pt`, `yolo-jpeg.pt`, `yolo-noise.pt`. HED stays frozen. |
+Recovery is evaluated two ways — classical **enhancement** (Stage 3) and
+**fine-tuning** distortion specialists (Stage 4). The fine-tuning target is one
+`yolov8s-obb` checkpoint per distortion family (`yolo-haze.pt`, `yolo-jpeg.pt`,
+`yolo-noise.pt`); HED and ORB stay frozen.
 
 ### Evaluation protocol
 
-- **Per class:** mAP@0.5 per DOTA class for detection; per-class F-score for edges (per polygon-derived class map); per-image good-match ratio for ORB.
-- **Per SNR:** every distortion swept across 6 intensities; SNR (dB) computed on each (clean, distorted) pair and averaged for the curves. Definition: `SNR_dB = 10 · log10( mean(clean²) / mean((clean − distorted)²) )`.
-- **Headline figure** per distortion: three lines on `mAP@0.5 vs SNR` — pretrained on distorted, pretrained on restored, fine-tuned on distorted.
+- **Per class:** mAP@0.5 per DOTA class for detection; per-class F-score for
+  edges (per polygon-derived class map); per-image good-match ratio for ORB.
+- **Per SNR:** every distortion swept across 6 intensities; SNR (dB) computed on
+  each (clean, distorted) pair and averaged for the curves. Definition:
+  `SNR_dB = 10 · log10( mean(clean²) / mean((clean − distorted)²) )`.
+- **Headline figure** per distortion: three lines on `mAP@0.5 vs SNR` —
+  pretrained on distorted, pretrained on restored, fine-tuned on distorted.
 
-### Known limitations (called out here, expanded in the final report)
+## Stage 1 — Clean baseline
 
-1. **Synthetic-haze circularity:** Dark Channel Prior partially reverses the same scattering model used to synthesize haze. Sanity-checked on a real hazy DOTA image where available.
-2. **HED GT is a proxy:** Edge GT is dilated DOTA polygon outlines + Canny on clean — not true human-annotated edges. Mitigated by reporting *relative* clean→distorted drop, which is robust to fixed bias.
-3. **Small subset:** 200 images / 40 test tiles → per-class statistics for rare classes (helicopter, ground track field) are noisy. Reported with confidence intervals.
-4. **Single tile per source image:** ignores most of each source image; chosen to keep compute and storage modest.
+Zero-shot performance on the 40 clean test tiles, used as the reference all later
+stages are measured against.
 
-## Week 4 — Data & EDA
-
-### Subset selection
-
-200 tiles (1024×1024) drawn from DOTA v1.0 train + val splits, frozen with `random.seed(7)`:
-- **Train:** 160 tiles
-- **Test:** 40 tiles
-
-Code: [`scripts/download_dota.py`](scripts/download_dota.py) · [`src/dota_utils.py`](src/dota_utils.py) · [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb)
-
-### Sample annotated tiles (4×4 grid)
-
-<!-- Run notebooks/01_eda.ipynb to generate this image -->
-![Sample grid with OBB annotations](outputs/sample_grid.png)
-
-### Class distribution
-
-![Class distribution](outputs/class_distribution.png)
-
-### Annotations-per-tile distribution
-
-![Annotations per tile](outputs/ann_per_tile.png)
-
-## Results
-
-To be added per stage:
-
-- **Baseline** — per-class metric tables, sample visualizations.
-- **Distorted** — degradation tables, SNR sweep curves, before/after grids.
-- **Enhanced** — comparison tables vs. distorted, side-by-side grids.
-- **Fine-tuned** — comparison tables vs. distorted baseline.
-
-## Week 6 — Clean baseline metrics
-
-### Detection (YOLOv8s-OBB, DOTA-v1.0-pretrained, zero-shot evaluation)
+### Detection (YOLOv8s-OBB, DOTA-v1.0-pretrained)
 
 | Metric | Value |
 |--------|-------|
@@ -124,19 +137,21 @@ Edge GT is dilated AABB outlines from the YOLO labels — a proxy, not human-ann
 
 ### Feature matching (ORB)
 
-ORB's good-match ratio is **distorted vs clean** by construction; on the clean stage alone it is trivially 1.0. Real numbers land in Week 8 (distorted stage).
+ORB's good-match ratio is **distorted vs clean** by construction; on the clean stage alone it is trivially 1.0. Real numbers land in the distorted stage.
 
-## Week 7 — Distortions
+## Stage 2 — Distortion & degradation
 
-Materialized the test-split sweep for the three distortions chosen in Week 2.
-720 PNGs (40 tiles × 3 distortions × 6 levels), with one shared GT (clean labels).
-Per-image SNR (dB) is logged at synthesis time in
+### Materializing the sweep
+
+The test-split sweep for the three distortions: **720 PNGs** (40 tiles × 3
+distortions × 6 levels), with one shared GT (clean labels). Per-image SNR (dB)
+is logged at synthesis time in
 [`results/distortion_manifest.csv`](results/distortion_manifest.csv).
 
 **Synthesis notes:**
 - **Haze:** literal scattering model `I = J·t + A·(1−t)` with `t = exp(-β)`
   (constant depth `d=1`). Atmospheric light `A` is per-image — mean of the
-  brightest 0.1% pixels (Tang/He convention) — so the Week 9 enhancement (DCP)
+  brightest 0.1% pixels (Tang/He convention) — so the Stage 3 enhancement (DCP)
   reverses the same `A` it would estimate.
 - **JPEG:** OpenCV `imencode/imdecode` round-trip at each quality `q ∈ {1, 3, 5, 10, 20, 40}`.
 - **Noise:** Gaussian read noise (std `σ_g`) plus signal-dependent shot noise
@@ -144,19 +159,15 @@ Per-image SNR (dB) is logged at synthesis time in
 
 Code: [`src/distortions.py`](src/distortions.py) · [`scripts/apply_distortions.py`](scripts/apply_distortions.py) · [`notebooks/02_distortions.ipynb`](notebooks/02_distortions.ipynb)
 
-### Distortion grids (clean + 3 sweep points)
-
 ![Haze sweep](outputs/figures/distorted_grid_haze.png)
 ![JPEG sweep](outputs/figures/distorted_grid_jpeg.png)
 ![Noise sweep](outputs/figures/distorted_grid_noise.png)
 
-### SNR distribution
-
 ![SNR histogram](outputs/figures/distorted_snr_hist.png)
 
-## Week 8 — Distorted stage (degradation)
+### Measuring degradation
 
-Ran YOLOv8s + HED + ORB on every (distortion, level) combo from Week 7 —
+Ran YOLOv8s + HED + ORB on every (distortion, level) combo —
 **18 combos × 40 tiles = 720 evaluations per task**. Per-class mAP@0.5 and
 per-image HED ODS F-score are measured against the (unchanged) clean GT;
 ORB's "good-match ratio" is **distorted vs clean** matched via BFMatcher
@@ -169,7 +180,7 @@ Code: [`scripts/eval_distorted.py`](scripts/eval_distorted.py) ·
 [`src/orb_match.py`](src/orb_match.py) ·
 [`notebooks/03_distorted_stage.ipynb`](notebooks/03_distorted_stage.ipynb)
 
-### mAP@0.5 vs SNR
+#### mAP@0.5 vs SNR
 
 ![mAP@0.5 vs SNR](outputs/figures/distorted_curve_map_vs_snr.png)
 
@@ -199,7 +210,7 @@ came from a single tile. Either the GT counts small pools the model trained
 only on large ones, or the centroid-cropped 1024×1024 tiles clip pools at the
 edge. Reported as a real model weakness, not a pipeline bug.
 
-### HED ODS F-score vs SNR
+#### HED ODS F-score vs SNR
 
 ![Edge F-score vs SNR](outputs/figures/distorted_curve_edgeF_vs_snr.png)
 
@@ -210,7 +221,7 @@ high-frequency natural images makes it robust to both compression artefacts
 and additive noise, while haze's low-frequency attenuation kills the very
 gradient structure HED relies on.
 
-### ORB good-match ratio vs SNR
+#### ORB good-match ratio vs SNR
 
 ![ORB good-match ratio vs SNR](outputs/figures/distorted_curve_orb_vs_snr.png)
 
@@ -222,19 +233,19 @@ gradient structure HED relies on.
 | JPEG | Smooth monotonic decay: 0.81 → 0.18 across q ∈ {40, 1}. JPEG quantisation kills high-frequency descriptor structure, so the Lowe-ratio test rejects most matches at low q. |
 | Noise | Smooth monotonic decay, gentler than JPEG: 0.80 → 0.37 across σ ∈ {5, 50}. Shot noise blurs descriptors but doesn't wipe them out; the matcher still finds many true correspondences even at σ=50. |
 
-These three curves are the headline finding of the baseline phase: **at the
+These three curves are the headline finding of the degradation phase: **at the
 same SNR, the same distortion family hurts different algorithms by very
 different amounts**, which is exactly the robustness question this project
 exists to study.
 
-## Week 9 — Restored stage (recovery)
+## Stage 3 — Restoration & recovery
 
-Applied the three Week-2 classical enhancements — **Dark Channel Prior (DCP)**
+Applied the three classical enhancements — **Dark Channel Prior (DCP)**
 for haze, **bilateral-on-Y** for JPEG, **NL-Means + bilateral** for noise — to
 all 720 distorted tiles (one matched enhancement per distortion family), then
 re-ran YOLOv8s-OBB + HED + ORB on the restored images. SNR is recomputed
 **restored-vs-clean** so the headline question is direct: *did enhancement
-recover signal?* Restored PNGs mirror the W7 layout under
+recover signal?* Restored PNGs mirror the distorted layout under
 [`data/restored/`](data/restored/); recovery manifest at
 [`results/restoration_manifest.csv`](results/restoration_manifest.csv); sweep
 aggregates in [`results/restoration_sweep/`](results/restoration_sweep/).
@@ -283,17 +294,18 @@ matched filter buys a modest detection gain (+0.04 mAP) but the smoothing
 **costs ORB good-matches** (−0.08 JPEG, −0.04 noise): the bilateral/NL-Means
 pass that pleases the OBB regressor also erases the high-frequency descriptor
 structure ORB depends on. Edge F-score barely moves either way — HED was
-already robust to both distortions in Week 8, so there is little to recover.
-The takeaway mirrors Week 8: *one enhancement does not lift every algorithm
-equally*, which is exactly the robustness trade-off this project studies.
+already robust to both distortions at Stage 2, so there is little to recover.
+The takeaway mirrors the degradation stage: *one enhancement does not lift every
+algorithm equally*, which is exactly the robustness trade-off this project
+studies.
 
-## Week 10 — Fine-tuning (distortion specialists)
+## Stage 4 — Fine-tuned specialists
 
+The second recovery strategy: instead of enhancing the image, adapt the model.
 Fine-tuned **three `yolov8s-obb` specialists** — one per distortion family —
-starting from the DOTA-pretrained baseline and adapting each to its distortion.
-The goal is robustness: a model that has *seen* the degradation during training
-should detect through it better than the pretrained baseline (the head-to-head
-test is Week 11).
+starting from the DOTA-pretrained baseline. A model that has *seen* the
+degradation during training should detect through it better than the pretrained
+baseline.
 
 **Data** ([`scripts/build_finetune_data.py`](scripts/build_finetune_data.py)):
 the 160-tile train subset is re-split 128/32 train/val (the 40-tile **test split
@@ -329,81 +341,136 @@ split includes q=1 where real structure is destroyed, and **haze** sits between
 across all six severity levels — including the worst — so 0.70–0.83 is strong
 evidence the specialists genuinely adapted to their distortion.
 
-> **Important — these are not the comparison yet.** The table above is
+> **These training numbers are not the comparison.** The table above is
 > Ultralytics' *internal validation* metric (oriented-IoU OBB mAP on the
 > held-out distorted val tiles), computed during training. It is **not**
-> directly comparable to the clean baseline `mAP 0.732` from Weeks 8–9, which
-> uses a different metric (AABB + VOC all-points AP) on a different image set
-> (the 40 clean test tiles). Proving *"fine-tuning beats the pretrained baseline
-> under distortion"* requires running **both** models through the same Week 8/9
-> evaluation pipeline on the distorted **test** sweep, per severity level —
-> that apples-to-apples comparison is **Week 11**.
+> directly comparable to the clean baseline `mAP 0.732`, which uses a different
+> metric (AABB + VOC all-points AP) on a different image set (the 40 clean test
+> tiles). The apples-to-apples comparison follows.
 
-## Week 11 — Fine-tuned specialists (metric-comparable)
+### Metric-comparable evaluation
 
-The three OBB specialists from Week 10 were re-evaluated through the **same**
-AABB + VOC all-points-AP pipeline as the distorted (W8) and restored (W9)
-sweeps — `scripts/eval_finetuned.py` runs each specialist on its matched
-distortion's 6 test combos over the held-out distorted **test** tiles
-(detections only; fine-tuning never touched HED/ORB). Unlike the Week-10
-Ultralytics val mAP50 (haze 0.809 / jpeg 0.704 / noise 0.833 — a different
-metric on a different image set), these numbers are directly comparable to the
+The three specialists were re-evaluated through the **same** AABB + VOC
+all-points-AP pipeline as the distorted and restored sweeps —
+`scripts/eval_finetuned.py` runs each specialist on its matched distortion's 6
+test combos over the held-out distorted **test** tiles (detections only;
+fine-tuning never touched HED/ORB). These numbers are directly comparable to the
 clean baseline (mAP 0.732) and to the earlier sweeps. Mean mAP@0.5 over the 6
 severity levels per family:
 
-| Family | Distorted | Restored (W9) | Fine-tuned (W11) | FT − distorted | FT − restored |
-|--------|----------:|--------------:|-----------------:|---------------:|--------------:|
-| haze   | 0.404     | **0.666**     | 0.512            | +0.108         | −0.153        |
-| jpeg   | 0.364     | 0.406         | **0.434**        | +0.070         | +0.028        |
-| noise  | 0.304     | 0.350         | **0.499**        | +0.194         | +0.148        |
+| Family | Distorted | Restored | Fine-tuned | FT − distorted | FT − restored |
+|--------|----------:|---------:|-----------:|---------------:|--------------:|
+| haze   | 0.404     | **0.666** | 0.512      | +0.108         | −0.154        |
+| jpeg   | 0.364     | 0.406     | **0.435**  | +0.071         | +0.029        |
+| noise  | 0.307     | 0.352     | **0.502**  | +0.195         | +0.150        |
 
 ![fine-tuned recovery](outputs/figures/finetuned_recovery_map_vs_snr.png)
 
-**Headline: the winning recovery strategy is distortion-dependent.**
-Fine-tuning beats the distorted baseline on every family (+0.07 to +0.19 mAP),
-confirming the specialists genuinely adapted. But it does **not** uniformly beat
-classical enhancement:
-
-- **Haze → enhance the image.** DCP dehazing (0.666) clearly beats the fine-tuned
-  specialist (0.512). The physics-based dark-channel prior inverts the haze model
-  directly, recovering contrast the fine-tuned detector can only partly learn to
-  see through.
-- **Noise → adapt the model.** The specialist (0.499) decisively beats denoising
-  (0.350), which erased detail along with the grain (consistent with W9's finding
-  that denoising hurt ORB).
-- **JPEG → roughly a tie, edge to fine-tuning** (0.434 vs 0.406); the two curves
-  track closely across the SNR range.
+**The winning recovery strategy is distortion-dependent.** Fine-tuning beats the
+distorted baseline on every family (+0.07 to +0.20 mAP), confirming the
+specialists genuinely adapted — but it does **not** uniformly beat classical
+enhancement. The full discussion of which strategy to use when is below.
 
 Each specialist is family-specific and was evaluated only on its matched
 distortion. Results CSV: `results/finetuned_sweep/perclass_detections.csv`;
 comparison built in `notebooks/05_finetuned_stage.ipynb`.
 
-## Repository layout (planned)
+## Discussion
+
+### Recovery decision matrix
+
+The central finding is that **no single recovery strategy wins across
+distortions** — the right move tracks the physics of the corruption.
+
+| Distortion | Best recovery | mAP@0.5 (best vs. alternative) | Why |
+|------------|---------------|--------------------------------|-----|
+| Haze  | Enhance (DCP dehazing)   | **0.666** vs. 0.512 (FT)    | A physics prior inverts the haze formation model and restores global contrast directly. |
+| Noise | Adapt (fine-tuning)      | **0.502** vs. 0.352 (denoise) | Denoising removes signal with the grain; the detector instead learns noise-robust features. |
+| JPEG  | Tie                      | 0.435 (FT) vs. 0.406 (enh.) | Block artefacts are partly invertible and partly learnable; neither dominates. |
+
+Fine-tuning beats the *distorted* baseline on every family (+0.07 to +0.20 mAP),
+confirming the specialists genuinely adapted — but "always fine-tune" would be
+the wrong lesson: on haze it loses to a classical algorithm with no training at
+all. The practical guidance is to match the recovery to the corruption: a
+physics-invertible distortion (haze) favours enhancement; a high-frequency,
+hard-to-invert distortion (noise) favours adaptation.
+
+### Task sensitivity
+
+The three tasks degraded at different rates, and **ORB feature matching was the
+most discriminating signal** across the SNR sweep — its good-match ratio fell
+steeply where detection mAP was comparatively robust. This matches the physics:
+ORB keypoints depend on fine local gradients that additive noise and JPEG
+blocking destroy first, while OBB detection leans on coarser object-scale
+structure that survives moderate degradation. HED edge F-score (ODS) sat between
+the two, and was itself dominated by haze (low-frequency contrast loss) while
+shrugging off noise and JPEG. The practical implication: low-level descriptors
+are the early-warning canary for image quality, degrading well before high-level
+detection visibly suffers.
+
+### SNR as a predictor
+
+SNR is a useful but imperfect degradation axis. For **additive noise and haze**
+the metric-vs-SNR curves are smooth and monotone, so SNR predicts performance
+well. For **JPEG** the relationship is weaker: blockiness is structured, not
+additive, so equal SNR values do not imply equal task damage — at SNR ≈ 14 dB,
+noise (σ=15) holds mAP 0.378 while JPEG (q=3) sits at 0.176, a ~2× gap from the
+same SNR budget. SNR is therefore a fair common x-axis for cross-distortion
+plots but should not be read as a distortion-agnostic predictor of accuracy.
+
+### Limitations & future work
+
+1. **Synthetic-haze circularity.** Dark Channel Prior partially reverses the
+   same scattering model used to synthesize haze, which flatters the haze
+   restoration result. Sanity-checked on a real hazy DOTA image where available.
+2. **HED GT is a proxy.** Edge GT is dilated DOTA polygon outlines + Canny on
+   clean — not true human-annotated edges. Mitigated by reporting the *relative*
+   clean→distorted drop, which is robust to a fixed bias.
+3. **AABB-from-OBB evaluation.** Oriented boxes are reduced to axis-aligned boxes
+   for VOC-style AP; this slightly understates localization quality on rotated
+   objects.
+4. **Small test split.** Metrics are on 40 held-out tiles per combo, so per-class
+   statistics for rare classes (helicopter, ground-track-field) are noisy and
+   absolute mAP carries sampling noise — though the cross-strategy *ordering* is
+   stable. One tile per source image also ignores most of each scene (chosen to
+   keep compute/storage modest).
+5. **Single backbone, family-specific specialists.** Only YOLOv8s-OBB was
+   studied, and each fine-tuned model saw only its own distortion; a larger
+   detector or a single all-distortion specialist was not tested.
+6. **Future work.** Combined/compound distortions, a joint enhance-then-fine-tune
+   pipeline, and larger evaluation splits.
+
+## Repository layout
 
 ```
 .
-├── README.md     # this file = the project report
-├── data/         # (gitignored) raw / distorted / restored
-├── notebooks/    # EDA + experiments
-├── src/          # reusable code (distortions, restoration, eval)
-├── outputs/      # tables, figures, sample grids
-└── runs/         # (gitignored) model checkpoints / training runs
+├── README.md      # this file = the project report
+├── notebooks/     # 01_eda … 05_finetuned_stage
+├── src/           # reusable code (distortions, enhancement, eval, figures)
+├── scripts/       # CLIs: download, apply distortions/enhancements, eval, finetune
+├── results/       # tracked metric CSVs + manifests + training curves
+├── outputs/       # tracked figures (outputs/figures/) + EDA grids
+├── tests/         # pytest suite
+├── weights/       # OBB weights (fine-tuned *.pt gitignored)
+└── data/          # (gitignored) clean / distorted / restored / finetune tiles
 ```
 
-## Weekly plan 
+## Appendix — Weekly progress
 
-| Wk | Task | Artifact |
-|----|------|----------|
-| 1  | Form team, open Git, register | Opened GitHub repo, entry in course project table |
-| 2  | Research & select dataset, distortions, tasks | Decisions tables in README |
-| 3  | Research & select methods and enhancements | Decisions tables in README |
-| 4  | Download data, visualize images and annotations | EDA code, sample image grid in README |
-| 5  | Run methods/models on clean data | Folder with outcomes/labels |
-| 6  | Measure performance vs GT | Results tables, per-class viz |
-| 7  | Apply distortions, save data | Distortion code, before/after visuals |
-| 8  | Run models on distorted, measure degradation | Perf tables, comparison visuals |
-| 9  | Apply enhancements, measure | Side-by-side grids, perf comparison |
-| 10 | Fine-tune model(s) | FT code, checkpoint/weights |
-| 11 | Measure fine-tuned performance | Results table, visualization |
-| 12 | Polish README | Rich, detailed README |
-| 13 | Prepare PPT, review repo | Slides (PPT + PDF), final repo |
+Course deliverables by week; the commit history carries the incremental
+artifacts (`git log --grep "Week N"`).
+
+| Wk | Deliverable | Where in this report | Representative commit |
+|----|-------------|----------------------|-----------------------|
+| 1   | Repo + registration | — | `ec7f2b3` |
+| 2–3 | Dataset / tasks / distortions / enhancement decisions | §Setup | `34a5e2a` |
+| 4   | Download + EDA | §Setup › Dataset | `b88be2c` |
+| 5   | Clean runs (model wrappers + orchestrator) | §Stage 1 | `135107a` |
+| 6   | Clean metrics vs GT | §Stage 1 | `e4c96c3` |
+| 7   | Distortions applied + saved | §Stage 2 | `13d1984` |
+| 8   | Degradation measured | §Stage 2 | `f24f028` |
+| 9   | Enhancements applied + measured | §Stage 3 | `f4c8691` |
+| 10  | Fine-tune specialists | §Stage 4 | `9e4d0fa` |
+| 11  | Fine-tuned metric-comparable eval | §Stage 4 | `d0c00b8` |
+| 12  | Report restructure + hero figure | this README | (this branch) |
+| 13  | PPT + repo review | — | (pending) |
