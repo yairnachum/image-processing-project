@@ -227,6 +227,60 @@ same SNR, the same distortion family hurts different algorithms by very
 different amounts**, which is exactly the robustness question this project
 exists to study.
 
+## Week 9 — Restored stage (recovery)
+
+Applied the three Week-2 classical enhancements — **Dark Channel Prior (DCP)**
+for haze, **bilateral-on-Y** for JPEG, **NL-Means + bilateral** for noise — to
+all 720 distorted tiles (one matched enhancement per distortion family), then
+re-ran YOLOv8s-OBB + HED + ORB on the restored images. SNR is recomputed
+**restored-vs-clean** so the headline question is direct: *did enhancement
+recover signal?* Restored PNGs mirror the W7 layout under
+[`data/restored/`](data/restored/); recovery manifest at
+[`results/restoration_manifest.csv`](results/restoration_manifest.csv); sweep
+aggregates in [`results/restoration_sweep/`](results/restoration_sweep/).
+
+Code: [`src/enhancement.py`](src/enhancement.py) ·
+[`scripts/apply_enhancements.py`](scripts/apply_enhancements.py) ·
+[`scripts/eval_sweep.py`](scripts/eval_sweep.py) (generalized `--mode {distorted,restored}`) ·
+[`notebooks/04_restored_stage.ipynb`](notebooks/04_restored_stage.ipynb)
+
+### SNR recovery (restored − distorted)
+
+| Distortion | Mean SNR gain | Reading |
+|---|---:|---|
+| Haze  | **+12.2 dB** (peak +17.8 at β=1.5) | DCP working as textbook — the multiplicative haze model is exactly what DCP inverts. |
+| Noise | **+4.4 dB** (peak +7.9 at σ=15) | NL-Means recovers real signal across the sweep. |
+| JPEG  | **−1.4 dB** | Bilateral-on-Y *reduces* SNR at high quality (it smooths detail JPEG kept); only helps at q=1. |
+
+### Metric recovery (restored − distorted, mean over each sweep)
+
+| Distortion | mAP@0.5 | ODS F | ORB ratio |
+|---|---:|---:|---:|
+| Haze  | **+0.262** | **+0.045** | **+0.187** |
+| JPEG  | +0.042 | +0.001 | **−0.082** |
+| Noise | +0.045 | −0.006 | **−0.037** |
+
+![mAP recovery](outputs/figures/recovery_map_vs_snr.png)
+![Edge F recovery](outputs/figures/recovery_edgeF_vs_snr.png)
+![ORB recovery](outputs/figures/recovery_orb_vs_snr.png)
+
+**DCP is the clear win.** Haze is the one distortion where a classical
+physics-based prior matches the degradation model exactly, so enhancement
+recovers signal on *every* metric — mAP climbs by 0.26 toward the clean 0.732
+baseline, ORB matching by 0.19. The honest counterpoint: at β ≥ 2.5 DCP's
+transmission estimate collapses to ~`t0` everywhere and the restored tile is
+just a tinted copy of the input, so the heavy-haze end recovers little — a
+structural limit of the prior, not a code bug.
+
+**Denoising helps detection but hurts matching.** For JPEG and noise the
+matched filter buys a modest detection gain (+0.04 mAP) but the smoothing
+**costs ORB good-matches** (−0.08 JPEG, −0.04 noise): the bilateral/NL-Means
+pass that pleases the OBB regressor also erases the high-frequency descriptor
+structure ORB depends on. Edge F-score barely moves either way — HED was
+already robust to both distortions in Week 8, so there is little to recover.
+The takeaway mirrors Week 8: *one enhancement does not lift every algorithm
+equally*, which is exactly the robustness trade-off this project studies.
+
 ## Repository layout (planned)
 
 ```
