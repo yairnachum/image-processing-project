@@ -339,6 +339,45 @@ evidence the specialists genuinely adapted to their distortion.
 > evaluation pipeline on the distorted **test** sweep, per severity level —
 > that apples-to-apples comparison is **Week 11**.
 
+## Week 11 — Fine-tuned specialists (metric-comparable)
+
+The three OBB specialists from Week 10 were re-evaluated through the **same**
+AABB + VOC all-points-AP pipeline as the distorted (W8) and restored (W9)
+sweeps — `scripts/eval_finetuned.py` runs each specialist on its matched
+distortion's 6 test combos over the held-out distorted **test** tiles
+(detections only; fine-tuning never touched HED/ORB). Unlike the Week-10
+Ultralytics val mAP50 (haze 0.809 / jpeg 0.704 / noise 0.833 — a different
+metric on a different image set), these numbers are directly comparable to the
+clean baseline (mAP 0.732) and to the earlier sweeps. Mean mAP@0.5 over the 6
+severity levels per family:
+
+| Family | Distorted | Restored (W9) | Fine-tuned (W11) | FT − distorted | FT − restored |
+|--------|----------:|--------------:|-----------------:|---------------:|--------------:|
+| haze   | 0.404     | **0.666**     | 0.512            | +0.108         | −0.153        |
+| jpeg   | 0.364     | 0.406         | **0.434**        | +0.070         | +0.028        |
+| noise  | 0.304     | 0.350         | **0.499**        | +0.194         | +0.148        |
+
+![fine-tuned recovery](outputs/figures/finetuned_recovery_map_vs_snr.png)
+
+**Headline: the winning recovery strategy is distortion-dependent.**
+Fine-tuning beats the distorted baseline on every family (+0.07 to +0.19 mAP),
+confirming the specialists genuinely adapted. But it does **not** uniformly beat
+classical enhancement:
+
+- **Haze → enhance the image.** DCP dehazing (0.666) clearly beats the fine-tuned
+  specialist (0.512). The physics-based dark-channel prior inverts the haze model
+  directly, recovering contrast the fine-tuned detector can only partly learn to
+  see through.
+- **Noise → adapt the model.** The specialist (0.499) decisively beats denoising
+  (0.350), which erased detail along with the grain (consistent with W9's finding
+  that denoising hurt ORB).
+- **JPEG → roughly a tie, edge to fine-tuning** (0.434 vs 0.406); the two curves
+  track closely across the SNR range.
+
+Each specialist is family-specific and was evaluated only on its matched
+distortion. Results CSV: `results/finetuned_sweep/perclass_detections.csv`;
+comparison built in `notebooks/05_finetuned_stage.ipynb`.
+
 ## Repository layout (planned)
 
 ```
