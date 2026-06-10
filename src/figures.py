@@ -194,3 +194,44 @@ def plot_metric_vs_snr(
     plt.tight_layout()
     plt.savefig(out_path, dpi=130)
     plt.close(fig)
+
+
+def plot_distorted_vs_restored(
+    df_distorted: pd.DataFrame,
+    df_restored: pd.DataFrame,
+    value_col: str,
+    title: str,
+    ylabel: str,
+    out_path: Path,
+    snr_col: str = "snr_db_mean",
+    group_col: str = "distortion",
+    clean_baseline=None,
+) -> None:
+    """Three subplots (one per distortion). Each subplot shows two curves:
+    distorted (dashed) and restored (solid). Optional horizontal reference
+    line at `clean_baseline`.
+    """
+    distortions = ["haze", "jpeg", "noise"]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharey=True)
+    for ax, d in zip(axes, distortions):
+        d_sub = df_distorted[df_distorted[group_col] == d].dropna(subset=[snr_col, value_col]).sort_values(snr_col)
+        r_sub = df_restored[df_restored[group_col] == d].dropna(subset=[snr_col, value_col]).sort_values(snr_col)
+        if not d_sub.empty:
+            ax.plot(d_sub[snr_col], d_sub[value_col], "--o",
+                    color="tab:red", label=f"{d} distorted")
+        if not r_sub.empty:
+            ax.plot(r_sub[snr_col], r_sub[value_col], "-o",
+                    color="tab:green", label=f"{d} restored")
+        if clean_baseline is not None:
+            ax.axhline(clean_baseline, color="black", linestyle=":", linewidth=1,
+                       label=f"clean = {clean_baseline:.3f}")
+        ax.set_xlabel("SNR (dB)")
+        ax.set_title(d)
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="best", fontsize=8)
+    axes[0].set_ylabel(ylabel)
+    fig.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=130)
+    plt.close(fig)

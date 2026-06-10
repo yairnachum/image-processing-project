@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from src.figures import plot_perclass_bar, plot_predictions_grid, plot_distortion_grid, plot_metric_vs_snr
+from src.figures import plot_perclass_bar, plot_predictions_grid, plot_distortion_grid, plot_metric_vs_snr, plot_distorted_vs_restored
 
 
 def test_plot_perclass_bar_writes_png(tmp_path: Path):
@@ -105,6 +105,25 @@ def test_plot_metric_vs_snr_writes_png(tmp_path: Path):
         title="Test",
         ylabel="value",
         out_path=out,
+    )
+    assert out.exists()
+    assert out.stat().st_size > 1000
+
+
+def test_plot_distorted_vs_restored_writes_png(tmp_path: Path):
+    rows_d = []
+    rows_r = []
+    for d in ["haze", "jpeg", "noise"]:
+        for snr, v_d, v_r in [(0.0, 0.1, 0.2), (5.0, 0.3, 0.5), (10.0, 0.4, 0.6)]:
+            rows_d.append({"distortion": d, "snr_db_mean": snr, "value": v_d})
+            rows_r.append({"distortion": d, "snr_db_mean": snr, "value": v_r})
+    df_d = pd.DataFrame(rows_d)
+    df_r = pd.DataFrame(rows_r)
+    out = tmp_path / "recovery.png"
+    plot_distorted_vs_restored(
+        df_distorted=df_d, df_restored=df_r,
+        value_col="value", title="Test recovery", ylabel="value",
+        out_path=out, clean_baseline=0.7,
     )
     assert out.exists()
     assert out.stat().st_size > 1000
