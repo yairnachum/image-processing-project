@@ -260,6 +260,12 @@ Code: [`src/enhancement.py`](src/enhancement.py) ·
 | JPEG  | +0.042 | +0.001 | **−0.082** |
 | Noise | +0.045 | −0.006 | **−0.037** |
 
+In the figures below both curves share the **distorted (input) SNR** as a
+common degradation-severity axis, so the vertical gap between the red
+(distorted) and green (restored) line at each point reads directly as the
+recovery. The restored-vs-clean SNR numbers in the table above come from the
+recovery manifest (`snr_gain_db`).
+
 ![mAP recovery](outputs/figures/recovery_map_vs_snr.png)
 ![Edge F recovery](outputs/figures/recovery_edgeF_vs_snr.png)
 ![ORB recovery](outputs/figures/recovery_orb_vs_snr.png)

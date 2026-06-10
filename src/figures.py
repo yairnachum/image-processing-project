@@ -206,6 +206,7 @@ def plot_distorted_vs_restored(
     snr_col: str = "snr_db_mean",
     group_col: str = "distortion",
     clean_baseline=None,
+    xlabel: str = "SNR (dB)",
 ) -> None:
     """Three subplots (one per distortion). Each subplot shows two curves:
     distorted (dashed) and restored (solid). Optional horizontal reference
@@ -226,7 +227,7 @@ def plot_distorted_vs_restored(
         if clean_baseline is not None:
             ax.axhline(clean_baseline, color="black", linestyle=":", linewidth=1,
                        label=f"clean = {clean_baseline:.3f}")
-        ax.set_xlabel("SNR (dB)")
+        ax.set_xlabel(xlabel)
         ax.set_title(d)
         ax.grid(True, alpha=0.3)
         ax.legend(loc="best", fontsize=8)
