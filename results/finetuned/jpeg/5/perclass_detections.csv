@@ -1,0 +1,16 @@
+class_id,class_name,n_gt,n_pred,ap_iou50
+0,plane,48,46,0.9162037037037036
+1,ship,6,6,0.2777777777777778
+2,storage-tank,15,6,0.3222222222222222
+3,baseball-diamond,11,1,0.09090909090909091
+4,tennis-court,87,64,0.6489783596645626
+5,basketball-court,6,0,0.0
+6,ground-track-field,9,3,0.2222222222222222
+7,harbor,48,45,0.6733170302208141
+8,bridge,10,9,0.475
+9,large-vehicle,57,92,0.6852577802392128
+10,small-vehicle,175,118,0.5668841715667703
+11,helicopter,0,1,0.0
+12,roundabout,5,5,0.2
+13,soccer-ball-field,7,4,0.2857142857142857
+14,swimming-pool,64,8,0.0078125

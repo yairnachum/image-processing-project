@@ -33,6 +33,7 @@ weights/
 # and sweep aggregates are still tracked under results/.
 outputs/distorted/
 outputs/restored/
+outputs/finetuned/
 *.pt
 *.pth
 *.onnx
