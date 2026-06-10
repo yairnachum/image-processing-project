@@ -206,6 +206,9 @@ def plot_distorted_vs_restored(
     snr_col: str = "snr_db_mean",
     group_col: str = "distortion",
     clean_baseline=None,
+    df_third: pd.DataFrame = None,
+    third_label: str = "fine-tuned",
+    third_color: str = "tab:blue",
     xlabel: str = "SNR (dB)",
 ) -> None:
     """Three subplots (one per distortion). Each subplot shows two curves:
@@ -224,6 +227,11 @@ def plot_distorted_vs_restored(
         if not r_sub.empty:
             ax.plot(r_sub[snr_col], r_sub[value_col], "-o",
                     color="tab:green", label=f"{d} restored")
+        if df_third is not None:
+            t_sub = df_third[df_third[group_col] == d].dropna(subset=[snr_col, value_col]).sort_values(snr_col)
+            if not t_sub.empty:
+                ax.plot(t_sub[snr_col], t_sub[value_col], "-s",
+                        color=third_color, label=f"{d} {third_label}")
         if clean_baseline is not None:
             ax.axhline(clean_baseline, color="black", linestyle=":", linewidth=1,
                        label=f"clean = {clean_baseline:.3f}")

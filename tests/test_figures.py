@@ -127,3 +127,21 @@ def test_plot_distorted_vs_restored_writes_png(tmp_path: Path):
     )
     assert out.exists()
     assert out.stat().st_size > 1000
+
+
+def test_plot_distorted_vs_restored_with_third_curve(tmp_path: Path):
+    rows_d, rows_r, rows_f = [], [], []
+    for d in ["haze", "jpeg", "noise"]:
+        for snr, v_d, v_r, v_f in [(0.0, 0.1, 0.2, 0.3), (5.0, 0.3, 0.5, 0.6), (10.0, 0.4, 0.6, 0.7)]:
+            rows_d.append({"distortion": d, "snr_db_mean": snr, "value": v_d})
+            rows_r.append({"distortion": d, "snr_db_mean": snr, "value": v_r})
+            rows_f.append({"distortion": d, "snr_db_mean": snr, "value": v_f})
+    out = tmp_path / "threeway.png"
+    plot_distorted_vs_restored(
+        df_distorted=pd.DataFrame(rows_d), df_restored=pd.DataFrame(rows_r),
+        value_col="value", title="Three-way", ylabel="value",
+        out_path=out, clean_baseline=0.7,
+        df_third=pd.DataFrame(rows_f), third_label="fine-tuned",
+    )
+    assert out.exists()
+    assert out.stat().st_size > 1000
