@@ -107,6 +107,39 @@ def _make_fake_distorted_run(tmp_path: Path) -> tuple:
     return clean_root, distorted_root, results_root, outputs_root
 
 
+def test_measure_stage_detections_only_skips_edges(tmp_path: Path):
+    """detections_only=True writes perclass_detections.csv without needing edge maps."""
+    from src.measure import measure_stage
+
+    clean_root = tmp_path / "data" / "clean"
+    distorted_root = tmp_path / "data" / "distorted"
+    outputs_root = tmp_path / "outputs"
+    results_root = tmp_path / "results"
+    clean_lbl_dir = clean_root / "test" / "labels"
+    dist_img_dir = distorted_root / "haze" / "0.5" / "test" / "images"
+    det_dir = outputs_root / "finetuned" / "haze" / "0.5" / "detections"
+    for d in (clean_lbl_dir, dist_img_dir, det_dir):
+        d.mkdir(parents=True)
+    # Deliberately NO edges dir — detections_only must not read it.
+    for name in ("tile_0", "tile_1"):
+        cv2.imwrite(str(dist_img_dir / f"{name}.png"), np.zeros((256, 256, 3), dtype=np.uint8))
+        (clean_lbl_dir / f"{name}.txt").write_text("0 0.5 0.5 0.4 0.4\n")
+        (det_dir / f"{name}.txt").write_text("0 0.5 0.5 0.4 0.4 0.9\n")
+
+    measure_stage(
+        stage="finetuned/haze/0.5",
+        image_dir=dist_img_dir,
+        gt_label_dir=clean_lbl_dir,
+        results_root=results_root,
+        outputs_root=outputs_root,
+        detections_only=True,
+    )
+    out_dir = results_root / "finetuned" / "haze" / "0.5"
+    assert (out_dir / "perclass_detections.csv").exists()
+    assert not (out_dir / "edge_metrics.csv").exists()
+    assert not (out_dir / "perclass_edges.csv").exists()
+
+
 def test_measure_stage_with_explicit_gt_label_dir(tmp_path: Path):
     from src.measure import measure_stage
 

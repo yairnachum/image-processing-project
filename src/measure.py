@@ -32,8 +32,13 @@ def measure_stage(
     outputs_root: Optional[Path] = None,
     image_dir: Optional[Path] = None,
     gt_label_dir: Optional[Path] = None,
+    detections_only: bool = False,
 ) -> None:
     """Compute per-class detection + edge metrics for any pipeline stage.
+
+    When ``detections_only`` is True, only ``perclass_detections.csv`` is written
+    and the edge maps are not read — used by the Week-11 fine-tuned sweep, which
+    re-evaluates only the YOLO detector (HED/ORB were untouched by fine-tuning).
 
     Parameters
     ----------
@@ -129,6 +134,9 @@ def measure_stage(
             }
         )
     pd.DataFrame(rows).to_csv(out_dir / "perclass_detections.csv", index=False)
+
+    if detections_only:
+        return
 
     # --- Edges: per-image ODS + per-class F-score at dataset-wide best threshold ---
     edge_rows = []
